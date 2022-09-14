@@ -24,9 +24,9 @@ import {
 } from 'lexical';
 import {createContext, useContext, useEffect, useMemo, useState} from 'react';
 import * as React from 'react';
-import invariant from 'shared/invariant';
 
-import {$createTableNodeWithDimensions, TableNode} from '../nodes/TableNode';
+// import invariant from 'shared/invariant';
+import {$createTableNodeWithDimensions} from '../nodes/TableNode';
 
 export type InsertTableCommandPayload = Readonly<{
   columns: string;
@@ -99,9 +99,9 @@ export function TablePlugin({
   const cellContext = useContext(CellContext);
 
   useEffect(() => {
-    if (!editor.hasNodes([TableNode])) {
-      invariant(false, 'TablePlugin: TableNode is not registered on editor');
-    }
+    // if (!editor.hasNodes([TableNode])) {
+    //   invariant(false, 'TablePlugin: TableNode is not registered on editor');
+    // }
 
     cellContext.set(cellEditorConfig, children);
 
