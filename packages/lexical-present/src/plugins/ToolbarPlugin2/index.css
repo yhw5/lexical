@@ -6,7 +6,7 @@
   background-color: #fefefe;
   border-top-right-radius: 16px;
   border-bottom-right-radius: 16px;
-  /* box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2); */
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
 }
 
 .ToolbarPlugin2__container ul {

@@ -13,6 +13,10 @@ import * as React from 'react';
 
 import {SlideNode} from '../nodes/SlideNode';
 
+const params = new Proxy(new URLSearchParams(window.location.search), {
+  get: (searchParams, prop) => searchParams.get(prop),
+});
+
 let slide = 0;
 
 function useKeyboardNavigation() {
@@ -93,8 +97,12 @@ function TOC({
 }: {
   count: number;
   selected: number;
-}): JSX.Element {
-  console.info(count, selected);
+}): null | JSX.Element {
+  // @ts-ignore
+  const scrollbar = params.scrollbar;
+  if (scrollbar === '0' || scrollbar === 'false') {
+    return null;
+  }
   return (
     <div className="toc">
       <ul>
