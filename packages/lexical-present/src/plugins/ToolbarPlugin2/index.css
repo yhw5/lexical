@@ -50,6 +50,10 @@
   /* background-color: #000; */
 }
 
+.icon.lexical {
+  background-image: url(../../../icons/lexical.svg);
+}
+
 .icon.slide {
   background-image: url(../../../icons/plus-square.svg);
   /* -webkit-mask: url(../../../icons/plus-square.svg) no-repeat 50% 50%;

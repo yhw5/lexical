@@ -48,6 +48,15 @@ export default function ToolbarPlugin2(): JSX.Element {
       {modal}
       <nav className="ToolbarPlugin2__container">
         <ul>
+          <li>
+            <button
+              onClick={() => {
+                //
+              }}
+              className="ToolbarPlugin2__toolbar-item">
+              <i className="icon lexical" />
+            </button>
+          </li>
           {/* <button
           onClick={() => {
             activeEditor.update(() => {
@@ -59,7 +68,7 @@ export default function ToolbarPlugin2(): JSX.Element {
           }}>
           H1
         </button> */}
-          <li>
+          <li className="toolbar-divider">
             <button
               onClick={() => {
                 editor.update(() => {
