@@ -67,18 +67,16 @@ function useKeyboardNavigation() {
       }, 200);
     }
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'ArrowLeft') {
-          setSelected(--slide);
-          moveToSlide();
-          e.preventDefault();
-        } else {
-          if (e.key === 'ArrowRight') {
-            setSelected(++slide);
-            moveToSlide();
-            e.preventDefault();
-          }
-        }
+      const key = e.key;
+      const ctrlOrMeta = e.ctrlKey || e.metaKey;
+      if (key === 'PageUp' || (ctrlOrMeta && key === 'ArrowLeft')) {
+        setSelected(--slide);
+        moveToSlide();
+        e.preventDefault();
+      } else if (key === 'PageDown' || (ctrlOrMeta && key === 'ArrowRight')) {
+        setSelected(++slide);
+        moveToSlide();
+        e.preventDefault();
       }
     };
     document.addEventListener('keydown', handler);
