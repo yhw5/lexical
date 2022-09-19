@@ -57,11 +57,29 @@ function useKeyboardNavigation() {
             if (node.__type === 'slide') {
               j++;
               if (j === slide) {
-                const domElement = editor.getElementByKey(node.getKey());
+                const domElement: HTMLElement = editor.getElementByKey(
+                  node.getKey(),
+                );
                 if (domElement !== null) {
+                  // Go to element
+                  // debugger;
+                  // domElement.scrollIntoView({
+                  //   // behavior: 'smooth',
+                  //   behavior: 'auto',
+                  //   block: 'start',
+                  // });
+                  // Center element
+                  // const bodyRect = document.body.getBoundingClientRect();
+                  // const elementRect = domElement.getBoundingClientRect();
+                  // debugger;
+                  // const offset =
+                  //   elementRect.top - bodyRect.top + elementRect.height;
+                  // window.scrollTo(0, offset);
+                  // console.info(offset);
                   domElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
+                    behavior: 'auto',
+                    block: 'center',
+                    inline: 'center',
                   });
                 }
               }

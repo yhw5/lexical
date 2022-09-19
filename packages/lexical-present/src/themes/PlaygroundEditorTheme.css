@@ -142,7 +142,8 @@ iframe {
   border-radius: 6px;
   font-family: Menlo, Consolas, Monaco, monospace;
   display: block;
-  padding: 8px 8px 8px 52px;
+  /* padding: 8px 8px 8px 52px; */
+  padding: 8px 8px 8px 24px;
   line-height: 1.53;
   font-size: 13px;
   margin: 0;
@@ -153,7 +154,7 @@ iframe {
   overflow-x: auto;
   position: relative;
 }
-.PlaygroundEditorTheme__code:before {
+/* .PlaygroundEditorTheme__code:before {
   content: attr(data-gutter);
   position: absolute;
   background-color: #eee;
@@ -165,7 +166,7 @@ iframe {
   white-space: pre-wrap;
   text-align: right;
   min-width: 25px;
-}
+} */
 .PlaygroundEditorTheme__table {
   border-collapse: collapse;
   border-spacing: 0;

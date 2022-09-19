@@ -1,5 +1,6 @@
 .SlideComponet__slide-container {
-  padding: 100px 0px 156px 0;
+  /* padding: 100px 0px 156px 0; */
+  padding: 100px 0 100px 0;
 }
 .SlideComponet__slide {
   background-color: #fff;
