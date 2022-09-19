@@ -10,6 +10,7 @@ import './index.css';
 
 import {exportFile, importFile} from '@lexical/file';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
+import {mergeRegister} from '@lexical/utils';
 import {
   $getRoot,
   $getSelection,
@@ -27,19 +28,35 @@ import {INSERT_CODESANDBOX_COMMAND} from '../CodeSandboxPlugin';
 import {INSERT_EXCALIDRAW_COMMAND} from '../ExcalidrawPlugin';
 import {InsertImageDialog} from '../ToolbarPlugin';
 
+function fullScreen() {
+  document.body.requestFullscreen();
+}
+
 export default function ToolbarPlugin2(): JSX.Element {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
   const [modal, showModal] = useModal();
 
   useEffect(() => {
-    return editor.registerCommand(
-      SELECTION_CHANGE_COMMAND,
-      (_payload, newEditor) => {
-        setActiveEditor(newEditor);
-        return false;
-      },
-      COMMAND_PRIORITY_CRITICAL,
+    return mergeRegister(
+      editor.registerCommand(
+        SELECTION_CHANGE_COMMAND,
+        (_payload, newEditor) => {
+          setActiveEditor(newEditor);
+          return false;
+        },
+        COMMAND_PRIORITY_CRITICAL,
+      ),
+      (() => {
+        const handler = (e: KeyboardEvent) => {
+          if (e.key === 'F5') {
+            fullScreen();
+            e.preventDefault();
+          }
+        };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+      })(),
     );
   }, [editor]);
 
@@ -175,7 +192,7 @@ export default function ToolbarPlugin2(): JSX.Element {
           <li>
             <button
               onClick={() => {
-                document.body.requestFullscreen();
+                fullScreen();
               }}
               title="Full screen"
               aria-label="Export editor state to JSON"
