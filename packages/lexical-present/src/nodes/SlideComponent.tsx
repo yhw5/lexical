@@ -16,9 +16,9 @@ import {ListPlugin} from '@lexical/react/LexicalListPlugin';
 import {MarkdownShortcutPlugin} from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import {LexicalNestedComposer} from '@lexical/react/LexicalNestedComposer';
 import {RichTextPlugin} from '@lexical/react/LexicalRichTextPlugin';
-import {$getNodeByKey, $getSelection, LexicalEditor, NodeKey} from 'lexical';
+import {$getNodeByKey, LexicalEditor, NodeKey} from 'lexical';
 import * as React from 'react';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 
 import CodeHighlightPlugin from '../plugins/CodeHighlightPlugin';
 import CodeSandboxPlugin from '../plugins/CodeSandboxPlugin';
@@ -37,15 +37,16 @@ export default function SlideComponent({
   content: LexicalEditor;
 }): JSX.Element {
   const [isActive, setIsActive] = useState(false);
-  useEffect(() => {
-    setIsActive(content.getEditorState().read(() => $getSelection() !== null));
-    return content.registerUpdateListener(({editorState}) => {
-      setIsActive(editorState.read(() => $getSelection() !== null));
-    });
-  }, [content]);
   return (
     <div className="SlideComponent__slide-container">
-      <div className="SlideComponent__slide">
+      <div
+        className="SlideComponent__slide"
+        onFocus={() => {
+          setIsActive(true);
+        }}
+        onBlur={() => {
+          setIsActive(false);
+        }}>
         {isActive && (
           <div className="SlideComponent__toolbar">
             <button
