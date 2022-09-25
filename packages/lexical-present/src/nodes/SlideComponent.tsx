@@ -38,15 +38,18 @@ export default function SlideComponent({
 }): JSX.Element {
   const [isActive, setIsActive] = useState(false);
   return (
-    <div className="SlideComponent__slide-container">
-      <div
-        className="SlideComponent__slide"
-        onFocus={() => {
-          setIsActive(true);
-        }}
-        onBlur={() => {
+    <div
+      className="SlideComponent__slide-container"
+      onFocus={() => {
+        setIsActive(true);
+      }}
+      onBlur={() => {
+        // TODO Lexical parent steals selection; needs a fix
+        setTimeout(() => {
           setIsActive(false);
-        }}>
+        }, 1000);
+      }}>
+      <div className="SlideComponent__slide">
         {isActive && (
           <div className="SlideComponent__toolbar">
             <button
