@@ -6,7 +6,16 @@
  *
  */
 
-import type {ElementNode, LexicalEditor, LexicalNode} from 'lexical';
+import {
+  $getSelection,
+  COMMAND_PRIORITY_LOW,
+  ElementNode,
+  KEY_BACKSPACE_COMMAND,
+  KEY_SPACE_COMMAND,
+  LexicalEditor,
+  LexicalNode,
+  PASTE_COMMAND,
+} from 'lexical';
 
 import {
   $createAutoLinkNode,
@@ -25,59 +34,37 @@ import {
 } from 'lexical';
 import {useEffect} from 'react';
 import invariant from 'shared/invariant';
+import {$isRangeSelection} from 'lexical';
+import {$isTextNode} from 'lexical';
 
 type ChangeHandler = (url: string | null, prevUrl: string | null) => void;
 
-type LinkMatcherResult = {
+export type LinkMatcherResult = {
   index: number;
   length: number;
   text: string;
   url: string;
 };
 
-export type LinkMatcher = (text: string) => LinkMatcherResult | null;
+export type LinkMatcher = (text: string) => Array<LinkMatcherResult | null>;
 
-function findFirstMatch(
+function getAllMatches(
   text: string,
   matchers: Array<LinkMatcher>,
-): LinkMatcherResult | null {
-  for (let i = 0; i < matchers.length; i++) {
-    const match = matchers[i](text);
+): Array<LinkMatcherResult> {
+  const result = [];
 
-    if (match) {
-      return match;
+  for (const matcher of matchers) {
+    const matches = matcher(text);
+
+    for (const match of matches) {
+      if (match) {
+        result.push(match);
+      }
     }
   }
 
-  return null;
-}
-
-function isPreviousNodeValid(node: LexicalNode): boolean {
-  let previousNode = node.getPreviousSibling();
-
-  if ($isElementNode(previousNode)) {
-    previousNode = previousNode.getLastDescendant();
-  }
-
-  return (
-    previousNode === null ||
-    $isLineBreakNode(previousNode) ||
-    ($isTextNode(previousNode) && previousNode.getTextContent().endsWith(' '))
-  );
-}
-
-function isNextNodeValid(node: LexicalNode): boolean {
-  let nextNode = node.getNextSibling();
-
-  if ($isElementNode(nextNode)) {
-    nextNode = nextNode.getFirstDescendant();
-  }
-
-  return (
-    nextNode === null ||
-    $isLineBreakNode(nextNode) ||
-    ($isTextNode(nextNode) && nextNode.getTextContent().startsWith(' '))
-  );
+  return result;
 }
 
 function handleLinkCreation(
@@ -86,63 +73,29 @@ function handleLinkCreation(
   onChange: ChangeHandler,
 ): void {
   const nodeText = node.getTextContent();
-  const nodeTextLength = nodeText.length;
-  let text = nodeText;
-  let textOffset = 0;
-  let lastNode = node;
-  let match;
+  const matches = getAllMatches(nodeText, matchers);
 
-  while ((match = findFirstMatch(text, matchers)) && match !== null) {
-    const matchOffset = match.index;
-    const offset = textOffset + matchOffset;
-    const matchLength = match.length;
+  const offsets = [];
 
-    // Previous node is valid if any of:
-    // 1. Space before same node
-    // 2. Space in previous simple text node
-    // 3. Previous node is LineBreakNode
-    let contentBeforeMatchIsValid;
+  for (const match of matches) {
+    offsets.push(match.index, match.index + match.length);
+  }
 
-    if (offset > 0) {
-      contentBeforeMatchIsValid = nodeText[offset - 1] === ' ';
-    } else {
-      contentBeforeMatchIsValid = isPreviousNodeValid(node);
-    }
+  const textNodes = node.splitText(...offsets);
 
-    // Next node is valid if any of:
-    // 1. Space after same node
-    // 2. Space in next simple text node
-    // 3. Next node is LineBreakNode
-    let contentAfterMatchIsValid;
+  let match = matches.shift();
 
-    if (offset + matchLength < nodeTextLength) {
-      contentAfterMatchIsValid = nodeText[offset + matchLength] === ' ';
-    } else {
-      contentAfterMatchIsValid = isNextNodeValid(node);
-    }
+  for (const index in textNodes) {
+    const textNode = textNodes[index];
 
-    if (contentBeforeMatchIsValid && contentAfterMatchIsValid) {
-      let middleNode;
-
-      if (matchOffset === 0) {
-        [middleNode, lastNode] = lastNode.splitText(matchLength);
-      } else {
-        [, middleNode, lastNode] = lastNode.splitText(
-          matchOffset,
-          matchOffset + matchLength,
-        );
-      }
-
-      const nodeFormat = node.__format;
+    if (match !== undefined && match.text === textNode.getTextContent()) {
+      const nodeFormat = textNode.__format;
       const linkNode = $createAutoLinkNode(match.url);
       linkNode.append($createTextNode(match.text).setFormat(nodeFormat));
-      middleNode.replace(linkNode);
+      textNode.replace(linkNode);
       onChange(match.url, null);
+      match = matches.shift();
     }
-
-    const iterationOffset = matchOffset + matchLength;
-    text = text.substring(iterationOffset);
-    textOffset += iterationOffset;
   }
 }
 
@@ -151,61 +104,15 @@ function handleLinkEdit(
   matchers: Array<LinkMatcher>,
   onChange: ChangeHandler,
 ): void {
-  // Check children are simple text
-  const children = linkNode.getChildren();
-  const childrenLength = children.length;
-
-  for (let i = 0; i < childrenLength; i++) {
-    const child = children[i];
-
-    if (!$isTextNode(child) || !child.isSimpleText()) {
-      replaceWithChildren(linkNode);
-      onChange(null, linkNode.getURL());
-      return;
-    }
-  }
-
-  // Check text content fully matches
-  const text = linkNode.getTextContent();
-  const match = findFirstMatch(text, matchers);
-
-  if (match === null || match.text !== text) {
-    replaceWithChildren(linkNode);
-    onChange(null, linkNode.getURL());
-    return;
-  }
-
-  // Check neighbors
-  if (!isPreviousNodeValid(linkNode) || !isNextNodeValid(linkNode)) {
-    replaceWithChildren(linkNode);
-    onChange(null, linkNode.getURL());
-    return;
-  }
-
-  const url = linkNode.getURL();
-
-  if (match !== null && url !== match.url) {
-    linkNode.setURL(match.url);
-    onChange(match.url, url);
-  }
-}
-
-// Bad neighbours are edits in neighbor nodes that make AutoLinks incompatible.
-// Given the creation preconditions, these can only be simple text nodes.
-function handleBadNeighbors(textNode: TextNode, onChange: ChangeHandler): void {
-  const previousSibling = textNode.getPreviousSibling();
-  const nextSibling = textNode.getNextSibling();
-  const text = textNode.getTextContent();
-
-  if ($isAutoLinkNode(previousSibling) && !text.startsWith(' ')) {
-    replaceWithChildren(previousSibling);
-    onChange(null, previousSibling.getURL());
-  }
-
-  if ($isAutoLinkNode(nextSibling) && !text.endsWith(' ')) {
-    replaceWithChildren(nextSibling);
-    onChange(null, nextSibling.getURL());
-  }
+  console.log(linkNode);
+  // // Check text content fully matches
+  // const text = linkNode.getTextContent();
+  // // const match = findFirstMatch(text, matchers);
+  // if (match === null || match.text !== text) {
+  //   replaceWithChildren(linkNode);
+  //   onChange(null, linkNode.getURL());
+  //   return;
+  // }
 }
 
 function replaceWithChildren(node: ElementNode): Array<LexicalNode> {
@@ -243,19 +150,55 @@ function useAutoLink(
       editor.registerNodeTransform(TextNode, (textNode: TextNode) => {
         const parent = textNode.getParentOrThrow();
 
-        if ($isAutoLinkNode(parent)) {
-          handleLinkEdit(parent, matchers, onChangeWrapped);
-        } else if (!$isLinkNode(parent)) {
-          if (textNode.isSimpleText()) {
+        if (!$isLinkNode(parent)) {
+          if (
+            textNode.isSimpleText() &&
+            textNode.getTextContent().endsWith(' ')
+          ) {
             handleLinkCreation(textNode, matchers, onChangeWrapped);
           }
-
-          handleBadNeighbors(textNode, onChangeWrapped);
         }
       }),
       editor.registerNodeTransform(AutoLinkNode, (linkNode: AutoLinkNode) => {
         handleLinkEdit(linkNode, matchers, onChangeWrapped);
       }),
+
+      editor.registerCommand(
+        PASTE_COMMAND,
+        (event: KeyboardEvent) => {
+          const selection = $getSelection();
+
+          if (!$isRangeSelection(selection)) {
+            return false;
+          }
+
+          const removeTransform = editor.registerNodeTransform(
+            TextNode,
+            (textNode) => {
+              const parent = textNode.getParentOrThrow();
+
+              if (!$isLinkNode(parent)) {
+                if (textNode.isSimpleText()) {
+                  handleLinkCreation(textNode, matchers, onChangeWrapped);
+                }
+              }
+            },
+          );
+
+          // selection.getNodes().map((node) => {
+          //   console.log(node);
+          //   if ($isTextNode(node)) {
+          //     console.log(node);
+          //     handleLinkCreation(node, matchers, onChangeWrapped);
+          //   }
+          // });
+
+          removeTransform();
+
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
     );
   }, [editor, matchers, onChange]);
 }
