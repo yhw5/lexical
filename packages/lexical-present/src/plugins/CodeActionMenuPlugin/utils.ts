@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+// @ts-ignore
 import {debounce} from 'lodash-es';
 import {useMemo, useRef} from 'react';
 

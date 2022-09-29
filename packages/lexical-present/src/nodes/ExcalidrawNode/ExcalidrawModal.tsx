@@ -169,6 +169,7 @@ export default function ExcalidrawModal({
   // In DEV, Vite pulls this in fine, in prod it doesn't. It seems
   // like a module resolution issue with ESM vs CJS?
   const _Excalidraw =
+    // @ts-ignore
     Excalidraw.$$typeof != null ? Excalidraw : Excalidraw.default;
 
   return createPortal(

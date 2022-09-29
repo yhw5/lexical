@@ -14,6 +14,7 @@ import * as React from 'react';
 import {SlideNode} from '../nodes/SlideNode';
 
 const params = new Proxy(new URLSearchParams(window.location.search), {
+  // @ts-ignore
   get: (searchParams, prop) => searchParams.get(prop),
 });
 
@@ -57,6 +58,7 @@ function useKeyboardNavigation() {
             if (node.__type === 'slide') {
               j++;
               if (j === slide) {
+                // @ts-ignore
                 const domElement: HTMLElement = editor.getElementByKey(
                   node.getKey(),
                 );
