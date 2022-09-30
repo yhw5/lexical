@@ -373,40 +373,49 @@ export function createEditor(editorConfig?: {
               console.warn(`${name} must implement static "${method}" method`);
             }
           });
-          if (
-            // eslint-disable-next-line no-prototype-builtins
-            !klass.hasOwnProperty('importDOM') &&
-            // eslint-disable-next-line no-prototype-builtins
-            klass.hasOwnProperty('exportDOM')
-          ) {
-            console.warn(
-              `${name} should implement "importDOM" if using a custom "exportDOM" method to ensure HTML serialization (important for copy & paste) works as expected`,
-            );
+          // eslint-disable-next-line no-prototype-builtins
+          if (!klass.hasOwnProperty('importDOM')) {
+            console.warn(`${name} has no importDOM`);
           }
-          if (proto instanceof DecoratorNode) {
-            // eslint-disable-next-line no-prototype-builtins
-            if (!proto.hasOwnProperty('decorate')) {
-              console.warn(
-                `${proto.constructor.name} must implement "decorate" method`,
-              );
-            }
+          // eslint-disable-next-line no-prototype-builtins
+          if (!Object.hasOwnProperty.call(Object.prototype, 'exportDOM')) {
+            debugger;
+            console.warn(`${name} has no exportDOM`);
           }
-          if (
-            // eslint-disable-next-line no-prototype-builtins
-            !klass.hasOwnProperty('importJSON')
-          ) {
-            console.warn(
-              `${name} should implement "importJSON" method to ensure JSON and default HTML serialization works as expected`,
-            );
-          }
-          if (
-            // eslint-disable-next-line no-prototype-builtins
-            !proto.hasOwnProperty('exportJSON')
-          ) {
-            console.warn(
-              `${name} should implement "exportJSON" method to ensure JSON and default HTML serialization works as expected`,
-            );
-          }
+          // if (
+          //   // eslint-disable-next-line no-prototype-builtins
+          //   !klass.hasOwnProperty('importDOM') &&
+          //   // eslint-disable-next-line no-prototype-builtins
+          //   klass.hasOwnProperty('exportDOM')
+          // ) {
+          //   console.warn(
+          //     `${name} should implement "importDOM" if using a custom "exportDOM" method to ensure HTML serialization (important for copy & paste) works as expected`,
+          //   );
+          // }
+          // if (proto instanceof DecoratorNode) {
+          //   // eslint-disable-next-line no-prototype-builtins
+          //   if (!proto.hasOwnProperty('decorate')) {
+          //     console.warn(
+          //       `${proto.constructor.name} must implement "decorate" method`,
+          //     );
+          //   }
+          // }
+          // if (
+          //   // eslint-disable-next-line no-prototype-builtins
+          //   !klass.hasOwnProperty('importJSON')
+          // ) {
+          //   console.warn(
+          //     `${name} should implement "importJSON" method to ensure JSON and default HTML serialization works as expected`,
+          //   );
+          // }
+          // if (
+          //   // eslint-disable-next-line no-prototype-builtins
+          //   !proto.hasOwnProperty('exportJSON')
+          // ) {
+          //   console.warn(
+          //     `${name} should implement "exportJSON" method to ensure JSON and default HTML serialization works as expected`,
+          //   );
+          // }
         }
       }
       const type = klass.getType();

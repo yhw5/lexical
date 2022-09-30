@@ -220,7 +220,7 @@ test.describe('HorizontalRule', () => {
     });
   });
 
-  test('Will add a horizontal rule and split a TextNode across 2 paragraphs if the carat is in the middle of the TextNode, moving selection to the start of the new ParagraphNode.', async ({
+  test.only('Will add a horizontal rule and split a TextNode across 2 paragraphs if the carat is in the middle of the TextNode, moving selection to the start of the new ParagraphNode.', async ({
     page,
     isPlainText,
   }) => {
