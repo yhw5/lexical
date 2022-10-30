@@ -1,4 +1,4 @@
-<h1 align="center">
+<h1 align="center">hello
   <a href="https://lexical.dev">Lexical</a>
 </h1>
 
