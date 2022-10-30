@@ -66,7 +66,9 @@ function prepopulatedRichText() {
     root.append(paragraph2);
     const paragraph3 = $createParagraphNode();
     paragraph3.append(
-      $createTextNode(`If you'd like to find out more about Lexical, you can:`),
+      $createTextNode(
+        `helloIf you'd like to find out more about Lexical, you can:`,
+      ),
     );
     root.append(paragraph3);
     const list = $createListNode('bullet');
