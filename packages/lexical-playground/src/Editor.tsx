@@ -55,6 +55,7 @@ import {MaxLengthPlugin} from './plugins/MaxLengthPlugin';
 import MentionsPlugin from './plugins/MentionsPlugin';
 import PollPlugin from './plugins/PollPlugin';
 import SpeechToTextPlugin from './plugins/SpeechToTextPlugin';
+import SpellcheckPlugin from './plugins/SpellcheckPlugin';
 import TabFocusPlugin from './plugins/TabFocusPlugin';
 import TableCellActionMenuPlugin from './plugins/TableActionMenuPlugin';
 import TableCellResizer from './plugins/TableCellResizer';
@@ -136,6 +137,7 @@ export default function Editor(): JSX.Element {
         <CommentPlugin
           providerFactory={isCollab ? createWebsocketProvider : undefined}
         />
+        <SpellcheckPlugin />
         {isRichText ? (
           <>
             {isCollab ? (
