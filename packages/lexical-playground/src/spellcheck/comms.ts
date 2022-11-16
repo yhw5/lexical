@@ -6,20 +6,9 @@
  *
  */
 
-import type {Chunk, Key} from './update';
+import type {Key} from './update';
 
 export type DocumentKey = string;
-
-export type MutationType =
-  | {
-      type: 'add';
-      after: Key;
-      chunk: Chunk;
-    }
-  | {
-      type: 'remove';
-      key: Key;
-    };
 
 export type EvaluationType = 'spellcheck_error' | 'spellcheck_warning';
 export type EvaluationItem = {

@@ -9,8 +9,12 @@
 // - cacheBuilder
 // - Auto register to input and contenteditable
 
-import {Chunk, connect, DocumentKey, MutationType, queue} from './comms';
-import {DoublyChunk, update} from './update';
+import {
+  connect,
+  queue,
+  registerElement as registerElementForComms,
+} from './comms';
+import {registerElement as registerElementForUpdate, update} from './update';
 
 // [im] a cat -> [I'm] a cat
 // [He] [are] funny -> [He] [is] funny
@@ -49,17 +53,19 @@ export function registerElement(element: HTMLElement): void {
   if (!mounted) {
     mount();
   }
-  registerElementForComms();
-  registerElementForUpdate();
+  registerElementForComms(element);
+  registerElementForUpdate(element);
 }
 
 function observed(domMutations: MutationRecord[], observer: MutationObserver) {
   for (const domMutation of domMutations) {
     let target: null | Node = domMutation.target;
-    while (target !== null && target instanceof HTMLElement) {
-      const mutations = update(target, domMutation);
-      if (mutations !== null) {
-        queue(target, mutations);
+    while (target !== null) {
+      if (target instanceof HTMLElement) {
+        const mutations = update(target, domMutation);
+        if (mutations !== null) {
+          queue(target, mutations);
+        }
       }
       target = target.parentElement;
     }

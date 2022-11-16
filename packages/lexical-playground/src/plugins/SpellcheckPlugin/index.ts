@@ -9,7 +9,9 @@
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {useEffect} from 'react';
 
-import {registerElement} from '../../spellcheck';
+import {lazyInitialize, registerElement} from '../../spellcheck';
+
+lazyInitialize();
 
 export default function SpellcheckPlugin(): null {
   const [editor] = useLexicalComposerContext();
