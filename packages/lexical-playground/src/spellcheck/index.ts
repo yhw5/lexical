@@ -9,55 +9,59 @@
 // - cacheBuilder
 // - Auto register to input and contenteditable
 
-import strategy from './RepeatedStrategy';
+import {Chunk, connect, DocumentKey, MutationType, queue} from './comms';
+import {DoublyChunk, update} from './update';
 
 // [im] a cat -> [I'm] a cat
 // [He] [are] funny -> [He] [is] funny
 
-// function findTextNodes(node: Node)
+// server
+// function subscriber(mutations: MutationType, document: DocumentType): void {
+//   for (const mutation of mutations) {
 
-// const DATA = [
-//   ['im', "I'm"],
-//   ['he', null, (node, offset, document) => {
-//     if (nextWord === 'are') {
-//       return 'error'
-//     }
-//   }]
-// ];
+//   }
+// }
+// Spellchecker('word');
 
+let initialized = false;
 let mounted = false;
-const registeredElements = new Set();
-const cache = new WeakMap();
 
-function observed(mutations: MutationRecord[], observer: MutationObserver) {
-  for (const mutation of mutations) {
-    let target: null | Node = mutation.target;
-    while (target !== null) {
-      if (registeredElements.has(target)) {
-        console.info(mutation);
-        strategy(mutation);
-      }
-      target = target.parentElement;
-    }
-  }
+// const cache = new WeakMap();
+
+export function lazyInitialize(): void {
+  //
+  initialized = true;
 }
 
-function mount() {
-  const mutationObserver = new MutationObserver(observed);
-  mutationObserver.observe(document, {
+function mount(): void {
+  const domMutationObserver = new MutationObserver(observed);
+  domMutationObserver.observe(document, {
     attributes: true,
     characterData: true,
     childList: true,
     subtree: true,
   });
+  connect();
   mounted = true;
 }
 
-// class Spellcheck(strategies);
-
-export function registerElement(element: HTMLElement) {
+export function registerElement(element: HTMLElement): void {
   if (!mounted) {
     mount();
   }
-  registeredElements.add(element);
+  registerElementForComms();
+  registerElementForUpdate();
+}
+
+function observed(domMutations: MutationRecord[], observer: MutationObserver) {
+  for (const domMutation of domMutations) {
+    let target: null | Node = domMutation.target;
+    while (target !== null && target instanceof HTMLElement) {
+      const mutations = update(target, domMutation);
+      if (mutations !== null) {
+        queue(target, mutations);
+      }
+      target = target.parentElement;
+    }
+  }
 }
