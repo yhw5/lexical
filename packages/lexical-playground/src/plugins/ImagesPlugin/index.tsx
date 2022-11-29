@@ -6,14 +6,11 @@
  *
  */
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
-import {$wrapNodeInElement, mergeRegister} from '@lexical/utils';
+import {$insertNodeToNearestRoot, mergeRegister} from '@lexical/utils';
 import {
-  $createParagraphNode,
   $createRangeSelection,
   $getSelection,
-  $insertNodes,
   $isNodeSelection,
-  $isRootOrShadowRoot,
   $setSelection,
   COMMAND_PRIORITY_EDITOR,
   COMMAND_PRIORITY_HIGH,
@@ -218,10 +215,7 @@ export default function ImagesPlugin({
         INSERT_IMAGE_COMMAND,
         (payload) => {
           const imageNode = $createImageNode(payload);
-          $insertNodes([imageNode]);
-          if ($isRootOrShadowRoot(imageNode.getParentOrThrow())) {
-            $wrapNodeInElement(imageNode, $createParagraphNode).selectEnd();
-          }
+          $insertNodeToNearestRoot(imageNode);
 
           return true;
         },

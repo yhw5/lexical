@@ -220,6 +220,10 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
       </Suspense>
     );
   }
+
+  isInline(): boolean {
+    return false;
+  }
 }
 
 export function $createImageNode({
