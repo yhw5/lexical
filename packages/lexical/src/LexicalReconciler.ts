@@ -112,10 +112,24 @@ function setTextAlign(domStyle: CSSStyleDeclaration, value: string): void {
 }
 
 function setElementIndent(dom: HTMLElement, indent: number): void {
-  dom.style.setProperty(
-    'padding-inline-start',
-    indent === 0 ? '' : indent * 20 + 'px',
-  );
+  const theme = activeEditorConfig.theme;
+  const indentTheme = theme.indent;
+
+  if (indentTheme) {
+    const classList = dom.classList;
+    const levelKey: keyof typeof indentTheme = indent < 5 && indent > 0 ? 'level' + indent : 'level1';
+
+    // eslint-disable-next-line no-prototype-builtins
+    if (indentTheme.hasOwnProperty(levelKey)) {
+      dom.classList.add(
+        indentTheme[levelKey],
+      );
+  } else {
+    dom.style.setProperty(
+      'padding-inline-start',
+      indent === 0 ? '' : indent * (theme.indent || 20) + 'px',
+    );
+  }
 }
 
 function setElementFormat(dom: HTMLElement, format: number): void {

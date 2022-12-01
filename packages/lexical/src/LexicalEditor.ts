@@ -87,6 +87,12 @@ export type EditorThemeClasses = {
     h6?: EditorThemeClassName;
   };
   image?: EditorThemeClassName;
+  indent?: {
+    level1?: EditorThemeClassName;
+    level2?: EditorThemeClassName;
+    level3?: EditorThemeClassName;
+    level4?: EditorThemeClassName;
+  };
   link?: EditorThemeClassName;
   list?: {
     ul?: EditorThemeClassName;
