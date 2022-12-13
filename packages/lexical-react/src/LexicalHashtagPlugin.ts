@@ -6,11 +6,10 @@
  *
  */
 
-import type {TextNode} from 'lexical';
-
 import {$createHashtagNode, HashtagNode} from '@lexical/hashtag';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
-import {useLexicalTextEntity} from '@lexical/react/useLexicalTextEntity';
+import {mergeRegister} from '@lexical/utils';
+import {$createTextNode, TextNode} from 'lexical';
 import {useCallback, useEffect} from 'react';
 
 function getHashtagRegexStringChars(): Readonly<{
@@ -246,7 +245,7 @@ function getHashtagRegexString(): string {
   return hashtag;
 }
 
-const REGEX = new RegExp(getHashtagRegexString(), 'i');
+const HASHTAG_REGEX = new RegExp('^' + getHashtagRegexString(), 'i');
 
 export function HashtagPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
@@ -257,31 +256,86 @@ export function HashtagPlugin(): JSX.Element | null {
     }
   }, [editor]);
 
+  const getMatchAll = useCallback((text: string) => {
+    return HASHTAG_REGEX.global
+      ? text.matchAll(HASHTAG_REGEX)
+      : [HASHTAG_REGEX.exec(text)];
+  }, []);
+
   const createHashtagNode = useCallback((textNode: TextNode): HashtagNode => {
     return $createHashtagNode(textNode.getTextContent());
   }, []);
 
-  const getHashtagMatch = useCallback((text: string) => {
-    const matchArr = REGEX.exec(text);
+  const replaceWithSimpleText = (node: TextNode): void => {
+    const textNode = $createTextNode(node.getTextContent());
+    textNode.setFormat(node.getFormat());
+    node.replace(textNode);
+  };
 
-    if (matchArr === null) {
-      return null;
-    }
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerNodeTransform(TextNode, (node) => {
+        if (!node.isSimpleText()) {
+          return;
+        }
 
-    const hashtagLength = matchArr[3].length + 1;
-    const startOffset = matchArr.index + matchArr[1].length;
-    const endOffset = startOffset + hashtagLength;
-    return {
-      end: endOffset,
-      start: startOffset,
-    };
-  }, []);
+        const text = node.getTextContent();
 
-  useLexicalTextEntity<HashtagNode>(
-    getHashtagMatch,
-    HashtagNode,
-    createHashtagNode,
-  );
+        const matches = getMatchAll(text);
+
+        let nodeToReplace;
+
+        console.log(matches);
+
+        for (const match of matches) {
+          if (match && match.index !== undefined) {
+            const hashtagLength = match.index + match[0].length;
+
+            if (match.index === 0) {
+              [nodeToReplace] = node.splitText(match.index, hashtagLength);
+            } else {
+              [, nodeToReplace] = node.splitText(match.index, hashtagLength);
+            }
+
+            const replacementNode = createHashtagNode(nodeToReplace);
+
+            return nodeToReplace.replace(replacementNode);
+          }
+        }
+      }),
+      editor.registerNodeTransform(HashtagNode, (node) => {
+        const text = node.getTextContent();
+        const textLength = text.length;
+
+        const matches = getMatchAll(text);
+        const matchesArr = Array.from(matches);
+
+        if (!matchesArr.length) {
+          replaceWithSimpleText(node);
+
+          return;
+        }
+
+        let nodeToReplace;
+
+        for (const match of matchesArr) {
+          if (match && match.index !== undefined) {
+            const hashtagLength = match.index + match[0].length;
+
+            if (hashtagLength >= text.length) {
+              return;
+            }
+
+            [, nodeToReplace] = node.splitText(hashtagLength, textLength);
+
+            return replaceWithSimpleText(nodeToReplace);
+          }
+        }
+
+        return null;
+      }),
+    );
+  }, [createHashtagNode, editor, getMatchAll]);
 
   return null;
 }
