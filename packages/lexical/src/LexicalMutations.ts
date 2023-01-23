@@ -31,28 +31,14 @@ import {
   $updateTextNodeFromDOMContent,
   getDOMSelection,
   getNodeFromDOMNode,
-  getWindow,
   internalGetRoot,
   isFirefoxClipboardEvents,
 } from './LexicalUtils';
-// The time between a text entry event and the mutation observer firing.
-const TEXT_MUTATION_VARIANCE = 100;
 
 let isProcessingMutations = false;
-let lastTextEntryTimeStamp = 0;
 
 export function getIsProcesssingMutations(): boolean {
   return isProcessingMutations;
-}
-
-function updateTimeStamp(event: Event) {
-  lastTextEntryTimeStamp = event.timeStamp;
-}
-
-function initTextEntryListener(editor: LexicalEditor): void {
-  if (lastTextEntryTimeStamp === 0) {
-    getWindow(editor).addEventListener('textInput', updateTimeStamp, true);
-  }
 }
 
 function isManagedLineBreak(
@@ -120,8 +106,6 @@ export function $flushMutations(
   observer: MutationObserver,
 ): void {
   isProcessingMutations = true;
-  const shouldFlushTextMutations =
-    performance.now() - lastTextEntryTimeStamp > TEXT_MUTATION_VARIANCE;
 
   try {
     updateEditor(editor, () => {
@@ -155,7 +139,6 @@ export function $flushMutations(
           // Text mutations are deferred and passed to mutation listeners to be
           // processed outside of the Lexical engine.
           if (
-            shouldFlushTextMutations &&
             $isTextNode(targetNode) &&
             shouldUpdateTextNodeFromMutation(selection, targetDOM, targetNode)
           ) {
@@ -319,7 +302,6 @@ export function flushRootMutations(editor: LexicalEditor): void {
 }
 
 export function initMutationObserver(editor: LexicalEditor): void {
-  initTextEntryListener(editor);
   editor._observer = new MutationObserver(
     (mutations: Array<MutationRecord>, observer: MutationObserver) => {
       $flushMutations(editor, mutations, observer);
