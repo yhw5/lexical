@@ -580,6 +580,18 @@ const packages = [
     packageName: 'lexical-yjs',
     sourcePath: './packages/lexical-yjs/src/',
   },
+  {
+    modules: [
+      {
+        outputFileName: 'LexicalReactNative',
+        sourceFileName: 'index.ts',
+      },
+    ],
+    name: 'Lexical React Native',
+    outputPath: './packages/lexical-react-native/dist/',
+    packageName: 'lexical-react-native',
+    sourcePath: './packages/lexical-react-native/src/',
+  },
 ];
 
 async function buildTSDeclarationFiles(packageName, outputPath) {
