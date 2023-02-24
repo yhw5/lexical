@@ -21,6 +21,8 @@ import {TableCellNode, TableNode, TableRowNode} from '@lexical/table';
 import {CollapsibleContainerNode} from '../plugins/CollapsiblePlugin/CollapsibleContainerNode';
 import {CollapsibleContentNode} from '../plugins/CollapsiblePlugin/CollapsibleContentNode';
 import {CollapsibleTitleNode} from '../plugins/CollapsiblePlugin/CollapsibleTitleNode';
+import {TableCellNode as VTableCellNode} from '../plugins/VTablePlugin/TableCell';
+import {TableNode as VTableNode} from '../plugins/VTablePlugin/TableNode';
 import {AutocompleteNode} from './AutocompleteNode';
 import {EmojiNode} from './EmojiNode';
 import {EquationNode} from './EquationNode';
@@ -41,6 +43,8 @@ const PlaygroundNodes: Array<Klass<LexicalNode>> = [
   ListItemNode,
   QuoteNode,
   CodeNode,
+  VTableNode,
+  VTableCellNode,
   NewTableNode,
   TableNode,
   TableCellNode,
