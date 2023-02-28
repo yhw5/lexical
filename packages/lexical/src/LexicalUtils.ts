@@ -1173,20 +1173,25 @@ export function $textContentRequiresDoubleLinebreakAtEnd(
   return !$isRootNode(node) && !node.isLastChild() && !node.isInline();
 }
 
+export function getElementByKey(
+  editor: LexicalEditor,
+  key: NodeKey,
+): null | HTMLElement {
+  return editor._keyToDOMMap.get(key) || null;
+}
+
 export function getElementByKeyOrThrow(
   editor: LexicalEditor,
   key: NodeKey,
-): HTMLElement {
-  const element = editor._keyToDOMMap.get(key);
-
-  if (element === undefined) {
+): null | HTMLElement {
+  const element = getElementByKey(editor, key);
+  if (element === null) {
     invariant(
       false,
       'Reconciliation: could not find DOM element for node key %s',
       key,
     );
   }
-
   return element;
 }
 

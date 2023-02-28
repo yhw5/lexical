@@ -42,6 +42,7 @@ export class TableCellNode extends ElementNode {
   __isFirstColumn = false;
   __isFirstRow = false;
   __visible = true;
+  __color = 'grey';
 
   static getType(): string {
     return 'vtable-cell';
@@ -59,14 +60,15 @@ export class TableCellNode extends ElementNode {
     cell.__isFirstColumn = node.__isFirstColumn;
     cell.__isFirstRow = node.__isFirstRow;
     cell.__visible = node.__visible;
+    cell.__color = node.__color;
     return cell;
   }
 
   // View
 
-  createDOM(config: EditorConfig): HTMLElement {
+  createDOM(config: EditorConfig): null | HTMLElement {
     if (!this.__visible) {
-      return emptyNode();
+      return null;
     }
     const element = document.createElement('div');
     element.style.position = 'absolute';
@@ -92,13 +94,13 @@ export class TableCellNode extends ElementNode {
     style.height = `${this.__displayedHeight}px`;
     style.transform = `translate(${this.__left}px, ${this.__top}px)`;
     if (this.__isFirstColumn) {
-      style.borderLeft = '1px solid grey';
+      style.borderLeft = `1px solid ${this.__color}`;
     }
     if (this.__isFirstRow) {
-      style.borderTop = '1px solid grey';
+      style.borderTop = `1px solid ${this.__color}`;
     }
-    style.borderBottom = '1px solid grey';
-    style.borderRight = '1px solid grey';
+    style.borderBottom = `1px solid ${this.__color}`;
+    style.borderRight = `1px solid ${this.__color}`;
   }
 
   static importDOM(): DOMConversionMap | null {

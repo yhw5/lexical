@@ -34,12 +34,13 @@ import getScrollParent from './getScrollParent';
 import {NodeKey} from 'lexical';
 
 // INITAL_CONFIG -- Move to props
-const ROWS = 100;
+const ROWS = 1000;
 const COLUMNS = 4;
 const TABLE_WIDTH = 600;
 const CELL_HEIGHT = 100;
 
 let double_invoke = false;
+let double_invoke2 = false;
 
 function $initializeCell(node: TableCellNode): void {
   const autosize = $createTableCellAutosizeNode();
@@ -80,6 +81,7 @@ function $recomputeCellDimensions(
 
 function $setCellHeight(cell: TableCellNode, height: number): void {
   const previousHeight = cell.__height;
+  const previousDisplayedHeight = cell.__displayedHeight;
   const row = cell.__row;
   const writableCell_ = cell.getWritable();
   writableCell_.__height = height;
@@ -117,7 +119,7 @@ function $setCellHeight(cell: TableCellNode, height: number): void {
         sibling.getWritable().__displayedHeight = height;
         return true;
       } else if ($isTableCellNode(sibling) && siblingRow > row) {
-        sibling.getWritable().__top += height - previousHeight;
+        sibling.getWritable().__top += height - previousDisplayedHeight;
         return true;
       } else {
         return false;
@@ -170,9 +172,7 @@ function getAccumulatedOffsetTop(
   //   sum += parent.offsetTop;
   // }
   // return sum;
-  console.info(
-    toElement.getBoundingClientRect().y - element.getBoundingClientRect().y,
-  );
+  // return null;
   return (
     element.getBoundingClientRect().y - toElement.getBoundingClientRect().y
   );
@@ -200,6 +200,7 @@ export function TablePlugin(): null | JSX.Element {
           cell.__width = cellWidth;
           cell.__displayedHeight = CELL_HEIGHT;
           cell.__left = j * cellWidth;
+          cell.__top = i * CELL_HEIGHT;
           cell.__isFirstColumn = j === 0;
           cell.__isFirstRow = i === 0;
           cell.__visible = true;
@@ -240,8 +241,10 @@ export function TablePlugin(): null | JSX.Element {
               }
             }
           }
-          for (const autosize of autosizes) {
-            $recomputeCellDimensions(editor, autosize);
+          if (autosizes.size < 10) {
+            for (const autosize of autosizes) {
+              $recomputeCellDimensions(editor, autosize);
+            }
           }
         });
       },
@@ -249,6 +252,11 @@ export function TablePlugin(): null | JSX.Element {
   }, [editor]);
 
   useEffect(() => {
+    if (double_invoke2) {
+      return;
+    }
+    double_invoke2 = true;
+
     let previousScrollParent;
     const tableData = new Map<
       NodeKey,
@@ -278,19 +286,21 @@ export function TablePlugin(): null | JSX.Element {
             } = tableDOM;
             const accumulateTableOffsetTop =
               getAccumulatedOffsetTop(tableDOM, scrollElement) || 0;
+            // debugger;
             for (const cell of table.getChildren()) {
-              const cellDOM = editor.getElementByKey(cell.getKey());
-              if ($isTableCellNode(cell) && cellDOM !== null) {
-                const {
-                  scrollTop: cellScrollTop,
-                  offsetTop: cellOffsetTop,
-                  scrollHeight: cellScrollHeight,
-                  offsetHeight: cellOffsetHeight,
-                } = cellDOM;
+              // const cellDOM = editor.getElementByKey(cell.getKey());
+              if ($isTableCellNode(cell)) {
+                // const {
+                //   scrollTop: cellScrollTop,
+                //   offsetTop: cellOffsetTop,
+                //   scrollHeight: cellScrollHeight,
+                //   offsetHeight: cellOffsetHeight,
+                // } = cellDOM;
                 const visibleStart = scrollTop;
                 const visibleEnd = visibleStart + clientHeight;
                 const cellVisibleStart = accumulateTableOffsetTop + cell.__top;
-                const cellVisibleEnd = cellVisibleStart + cell.__height;
+                const cellVisibleEnd =
+                  cellVisibleStart + cell.__displayedHeight;
                 // console.info({
                 //   visibleStart,
                 //   visibleEnd,
@@ -304,12 +314,18 @@ export function TablePlugin(): null | JSX.Element {
                 ) {
                   // console.info('hide', cell.__row, cell.__column);
                   editor.update(() => {
-                    cell.getWritable().__visible = false;
+                    // console.info('not visible');
+                    const writableCell = cell.getWritable();
+                    writableCell.__color = 'red';
+                    writableCell.__visible = false;
                   });
                 } else {
                   // console.info('show', cell.__row, cell.__column);
                   editor.update(() => {
-                    cell.getWritable().__visible = true;
+                    const writableCell = cell.getWritable();
+                    console.info('yes visible', writableCell);
+                    writableCell.__color = 'green';
+                    writableCell.__visible = true;
                   });
                 }
               }
@@ -318,9 +334,9 @@ export function TablePlugin(): null | JSX.Element {
         }
       });
     }
-    setTimeout(() => {
+    setInterval(() => {
       computeAll(editor.getRootElement());
-    }, 1e3);
+    }, 5e3);
 
     function onScroll(): void {
       //
@@ -331,7 +347,7 @@ export function TablePlugin(): null | JSX.Element {
     const removeRootListener = editor.registerRootListener(
       (rootElement, previousRootElement) => {
         if (rootElement !== null) {
-          computeAll(rootElement);
+          // computeAll(rootElement);
         }
       },
     );

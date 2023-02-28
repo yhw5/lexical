@@ -39,6 +39,7 @@ import {EditorState} from './LexicalEditorState';
 import {
   $textContentRequiresDoubleLinebreakAtEnd,
   cloneDecorators,
+  getElementByKey,
   getElementByKeyOrThrow,
   getTextDirection,
   setMutatedNode,
@@ -165,29 +166,33 @@ function createNode(
   key: NodeKey,
   parentDOM: null | HTMLElement,
   insertDOM: null | Node,
-): HTMLElement {
+): null | HTMLElement {
   const node = activeNextNodeMap.get(key);
 
   if (node === undefined) {
     invariant(false, 'createNode: node does not exist in nodeMap');
   }
   const dom = node.createDOM(activeEditorConfig, activeEditor);
-  storeDOMWithKey(key, dom, activeEditor);
+  if (dom !== null) {
+    storeDOMWithKey(key, dom, activeEditor);
+  }
 
   // This helps preserve the text, and stops spell check tools from
   // merging or break the spans (which happens if they are missing
   // this attribute).
-  if ($isTextNode(node)) {
-    dom.setAttribute('data-lexical-text', 'true');
-  } else if ($isDecoratorNode(node)) {
-    dom.setAttribute('data-lexical-decorator', 'true');
+  if (dom !== null) {
+    if ($isTextNode(node)) {
+      dom.setAttribute('data-lexical-text', 'true');
+    } else if ($isDecoratorNode(node)) {
+      dom.setAttribute('data-lexical-decorator', 'true');
+    }
   }
 
   if ($isElementNode(node)) {
     const indent = node.__indent;
     const childrenSize = node.__size;
 
-    if (indent !== 0) {
+    if (dom !== null && indent !== 0) {
       setElementIndent(dom, indent);
     }
     if (childrenSize !== 0) {
@@ -197,10 +202,10 @@ function createNode(
     }
     const format = node.__format;
 
-    if (format !== 0) {
+    if (dom !== null && format !== 0) {
       setElementFormat(dom, format);
     }
-    if (!node.isInline()) {
+    if (dom !== null && !node.isInline()) {
       reconcileElementTerminatingLineBreak(null, node, dom);
     }
     if ($textContentRequiresDoubleLinebreakAtEnd(node)) {
@@ -210,7 +215,7 @@ function createNode(
   } else {
     const text = node.getTextContent();
 
-    if ($isDecoratorNode(node)) {
+    if (dom !== null && $isDecoratorNode(node)) {
       const decorator = node.decorate(activeEditor, activeEditorConfig);
 
       if (decorator !== null) {
@@ -227,7 +232,7 @@ function createNode(
     editorTextContent += text;
   }
 
-  if (parentDOM !== null) {
+  if (dom !== null && parentDOM !== null) {
     if (insertDOM != null) {
       parentDOM.insertBefore(dom, insertDOM);
     } else {
@@ -244,7 +249,7 @@ function createNode(
 
   if (__DEV__) {
     // Freeze the node in DEV to prevent accidental mutations
-    Object.freeze(node);
+    // Object.freeze(node);
   }
 
   setMutatedNode(
@@ -261,12 +266,14 @@ function createChildrenWithDirection(
   children: Array<NodeKey>,
   endIndex: number,
   element: ElementNode,
-  dom: HTMLElement,
+  dom: null | HTMLElement,
 ): void {
   const previousSubTreeDirectionedTextContent = subTreeDirectionedTextContent;
   subTreeDirectionedTextContent = '';
   createChildren(children, element, 0, endIndex, dom, null);
-  reconcileBlockDirection(element, dom);
+  if (dom !== null) {
+    reconcileBlockDirection(element, dom);
+  }
   subTreeDirectionedTextContent = previousSubTreeDirectionedTextContent;
 }
 
@@ -288,8 +295,10 @@ function createChildren(
   if ($textContentRequiresDoubleLinebreakAtEnd(element)) {
     subTreeTextContent += DOUBLE_LINE_BREAK;
   }
-  // @ts-expect-error: internal field
-  dom.__lexicalTextContent = subTreeTextContent;
+  if (dom !== null) {
+    // @ts-expect-error: internal field
+    dom.__lexicalTextContent = subTreeTextContent;
+  }
   subTreeTextContent = previousSubTreeTextContent + subTreeTextContent;
 }
 
@@ -455,12 +464,12 @@ function reconcileChildren(
 
   if (prevChildrenSize === 1 && nextChildrenSize === 1) {
     const prevFirstChildKey = prevElement.__first as NodeKey;
-    const nextFrstChildKey = nextElement.__first as NodeKey;
-    if (prevFirstChildKey === nextFrstChildKey) {
+    const nextFirstChildKey = nextElement.__first as NodeKey;
+    if (prevFirstChildKey === nextFirstChildKey) {
       reconcileNode(prevFirstChildKey, dom);
     } else {
       const lastDOM = getPrevElementByKeyOrThrow(prevFirstChildKey);
-      const replacementDOM = createNode(nextFrstChildKey, null, null);
+      const replacementDOM = createNode(nextFirstChildKey, null, null);
       dom.replaceChild(replacementDOM, lastDOM);
       destroyNode(prevFirstChildKey, null);
     }
@@ -519,8 +528,9 @@ function reconcileChildren(
 
 function reconcileNode(
   key: NodeKey,
-  parentDOM: HTMLElement | null,
-): HTMLElement {
+  parentDOM: null | HTMLElement,
+  afterSiblingDOM: null | HTMLElement,
+): null | HTMLElement {
   const prevNode = activePrevNodeMap.get(key);
   let nextNode = activeNextNodeMap.get(key);
 
@@ -535,26 +545,28 @@ function reconcileNode(
     treatAllNodesAsDirty ||
     activeDirtyLeaves.has(key) ||
     activeDirtyElements.has(key);
-  const dom = getElementByKeyOrThrow(activeEditor, key);
+  const dom = getElementByKey(activeEditor, key);
 
   // If the node key points to the same instance in both states
   // and isn't dirty, we just update the text content cache
   // and return the existing DOM Node.
   if (prevNode === nextNode && !isDirty) {
     if ($isElementNode(prevNode)) {
-      // @ts-expect-error: internal field
-      const previousSubTreeTextContent = dom.__lexicalTextContent;
+      if (false) {
+        // @ts-expect-error: internal field
+        const previousSubTreeTextContent = dom.__lexicalTextContent;
 
-      if (previousSubTreeTextContent !== undefined) {
-        subTreeTextContent += previousSubTreeTextContent;
-        editorTextContent += previousSubTreeTextContent;
-      }
+        if (previousSubTreeTextContent !== undefined) {
+          subTreeTextContent += previousSubTreeTextContent;
+          editorTextContent += previousSubTreeTextContent;
+        }
 
-      // @ts-expect-error: internal field
-      const previousSubTreeDirectionTextContent = dom.__lexicalDirTextContent;
+        // @ts-expect-error: internal field
+        const previousSubTreeDirectionTextContent = dom.__lexicalDirTextContent;
 
-      if (previousSubTreeDirectionTextContent !== undefined) {
-        subTreeDirectionedTextContent += previousSubTreeDirectionTextContent;
+        if (previousSubTreeDirectionTextContent !== undefined) {
+          subTreeDirectionedTextContent += previousSubTreeDirectionTextContent;
+        }
       }
     } else {
       const text = prevNode.getTextContent();
@@ -589,7 +601,19 @@ function reconcileNode(
       invariant(false, 'reconcileNode: parentDOM is null');
     }
 
-    parentDOM.replaceChild(replacementDOM, dom);
+    if (replacementDOM === null) {
+      if (dom !== null) {
+        dom.remove();
+      }
+    } else if (dom === null) {
+      if (afterSiblingDOM === null) {
+        parentDOM.append(replacementDOM);
+      } else {
+        parentDOM.insertBefore(replacementDOM, afterSiblingDOM);
+      }
+    } else {
+      parentDOM.replaceChild(replacementDOM, dom);
+    }
     destroyNode(key, null);
     return replacementDOM;
   }
@@ -598,20 +622,22 @@ function reconcileNode(
     // Reconcile element children
     const nextIndent = nextNode.__indent;
 
-    if (nextIndent !== prevNode.__indent) {
+    if (dom !== null && nextIndent !== prevNode.__indent) {
       setElementIndent(dom, nextIndent);
     }
 
     const nextFormat = nextNode.__format;
 
-    if (nextFormat !== prevNode.__format) {
-      setElementFormat(dom, nextFormat);
-    }
-    if (isDirty) {
-      reconcileChildrenWithDirection(prevNode, nextNode, dom);
+    if (dom !== null) {
+      if (nextFormat !== prevNode.__format) {
+        setElementFormat(dom, nextFormat);
+      }
+      if (isDirty) {
+        reconcileChildrenWithDirection(prevNode, nextNode, dom);
 
-      if (!$isRootNode(nextNode) && !nextNode.isInline()) {
-        reconcileElementTerminatingLineBreak(prevNode, nextNode, dom);
+        if (!$isRootNode(nextNode) && !nextNode.isInline()) {
+          reconcileElementTerminatingLineBreak(prevNode, nextNode, dom);
+        }
       }
     }
 
@@ -701,77 +727,113 @@ function reconcileNodeChildren(
   let prevIndex = 0;
   let nextIndex = 0;
 
-  while (prevIndex <= prevEndIndex && nextIndex <= nextEndIndex) {
-    const prevKey = prevChildren[prevIndex];
-    const nextKey = nextChildren[nextIndex];
+  prevChildrenSet = new Set(prevChildren);
+  nextChildrenSet = new Set(nextChildren);
+  for (const key of prevChildrenSet) {
+    if (!nextChildrenSet.has(key)) {
+      destroyNode(key, dom);
+    }
+  }
 
-    if (prevKey === nextKey) {
-      siblingDOM = getNextSibling(reconcileNode(nextKey, dom));
-      prevIndex++;
-      nextIndex++;
+  let domChild = dom.firstChild;
+  for (let i = 0; i < nextChildrenLength; i++) {
+    const nextKey = nextChildren[i];
+    let nodeDOM;
+    if (!prevChildrenSet.has(nextKey)) {
+      nodeDOM = createNode(nextKey, dom, null);
     } else {
-      if (prevChildrenSet === undefined) {
-        prevChildrenSet = new Set(prevChildren);
+      nodeDOM = reconcileNode(nextKey, dom, null);
+      if (nodeDOM === null) {
+        activeEditor._keyToDOMMap.delete(nextKey);
       }
-
-      if (nextChildrenSet === undefined) {
-        nextChildrenSet = new Set(nextChildren);
-      }
-
-      const nextHasPrevKey = nextChildrenSet.has(prevKey);
-      const prevHasNextKey = prevChildrenSet.has(nextKey);
-
-      if (!nextHasPrevKey) {
-        // Remove prev
-        siblingDOM = getNextSibling(getPrevElementByKeyOrThrow(prevKey));
-        destroyNode(prevKey, dom);
-        prevIndex++;
-      } else if (!prevHasNextKey) {
-        // Create next
-        createNode(nextKey, dom, siblingDOM);
-        nextIndex++;
+    }
+    if (nodeDOM !== null && domChild === nodeDOM) {
+      domChild = domChild.nextSibling;
+    } else {
+      domChild = null;
+      if (nodeDOM !== null) {
+        dom.append(nodeDOM);
       } else {
-        // Move next
-        const childDOM = getElementByKeyOrThrow(activeEditor, nextKey);
-
-        if (childDOM === siblingDOM) {
-          siblingDOM = getNextSibling(reconcileNode(nextKey, dom));
-        } else {
-          if (siblingDOM != null) {
-            dom.insertBefore(childDOM, siblingDOM);
-          } else {
-            dom.appendChild(childDOM);
-          }
-
-          reconcileNode(nextKey, dom);
+        const previousDOM = getElementByKey(activeEditor, nextKey);
+        if (previousDOM !== null) {
+          previousDOM.remove();
         }
-
-        prevIndex++;
-        nextIndex++;
       }
     }
   }
 
-  const appendNewChildren = prevIndex > prevEndIndex;
-  const removeOldChildren = nextIndex > nextEndIndex;
+  // while (prevIndex <= prevEndIndex && nextIndex <= nextEndIndex) {
+  //   const prevKey = prevChildren[prevIndex];
+  //   const nextKey = nextChildren[nextIndex];
 
-  if (appendNewChildren && !removeOldChildren) {
-    const previousNode = nextChildren[nextEndIndex + 1];
-    const insertDOM =
-      previousNode === undefined
-        ? null
-        : activeEditor.getElementByKey(previousNode);
-    createChildren(
-      nextChildren,
-      nextElement,
-      nextIndex,
-      nextEndIndex,
-      dom,
-      insertDOM,
-    );
-  } else if (removeOldChildren && !appendNewChildren) {
-    destroyChildren(prevChildren, prevIndex, prevEndIndex, dom);
-  }
+  //   if (prevKey === nextKey) {
+  //     const x = reconcileNode(nextKey, dom, null);
+  //     siblingDOM = getNextSibling(x);
+  //     prevIndex++;
+  //     nextIndex++;
+  //   } else {
+  //     if (prevChildrenSet === undefined) {
+  //       prevChildrenSet = new Set(prevChildren);
+  //     }
+
+  //     if (nextChildrenSet === undefined) {
+  //       nextChildrenSet = new Set(nextChildren);
+  //     }
+
+  //     const nextHasPrevKey = nextChildrenSet.has(prevKey);
+  //     const prevHasNextKey = prevChildrenSet.has(nextKey);
+
+  //     if (!nextHasPrevKey) {
+  //       // Remove prev
+  //       siblingDOM = getNextSibling(getPrevElementByKeyOrThrow(prevKey));
+  //       destroyNode(prevKey, dom);
+  //       prevIndex++;
+  //     } else if (!prevHasNextKey) {
+  //       // Create next
+  //       createNode(nextKey, dom, siblingDOM);
+  //       nextIndex++;
+  //     } else {
+  //       // Move next
+  //       const childDOM = getElementByKeyOrThrow(activeEditor, nextKey);
+
+  //       if (childDOM === siblingDOM) {
+  //         siblingDOM = getNextSibling(reconcileNode(nextKey, dom));
+  //       } else {
+  //         if (siblingDOM != null) {
+  //           dom.insertBefore(childDOM, siblingDOM);
+  //         } else {
+  //           dom.appendChild(childDOM);
+  //         }
+
+  //         reconcileNode(nextKey, dom);
+  //       }
+
+  //       prevIndex++;
+  //       nextIndex++;
+  //     }
+  //   }
+  // }
+
+  // const appendNewChildren = prevIndex > prevEndIndex;
+  // const removeOldChildren = nextIndex > nextEndIndex;
+
+  // if (appendNewChildren && !removeOldChildren) {
+  //   const previousNode = nextChildren[nextEndIndex + 1];
+  //   const insertDOM =
+  //     previousNode === undefined
+  //       ? null
+  //       : activeEditor.getElementByKey(previousNode);
+  //   createChildren(
+  //     nextChildren,
+  //     nextElement,
+  //     nextIndex,
+  //     nextEndIndex,
+  //     dom,
+  //     insertDOM,
+  //   );
+  // } else if (removeOldChildren && !appendNewChildren) {
+  //   destroyChildren(prevChildren, prevIndex, prevEndIndex, dom);
+  // }
 }
 
 export function reconcileRoot(
@@ -805,7 +867,7 @@ export function reconcileRoot(
   // listeners later in the update cycle.
   const currentMutatedNodes = new Map();
   mutatedNodes = currentMutatedNodes;
-  reconcileNode('root', null);
+  reconcileNode('root', null, null);
   // We don't want a bunch of void checks throughout the scope
   // so instead we make it seem that these values are always set.
   // We also want to make sure we clear them down, otherwise we

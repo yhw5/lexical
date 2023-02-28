@@ -597,7 +597,7 @@ export class LexicalNode {
 
   // View
 
-  createDOM(_config: EditorConfig, _editor: LexicalEditor): HTMLElement {
+  createDOM(_config: EditorConfig, _editor: LexicalEditor): null | HTMLElement {
     invariant(false, 'createDOM: base method not extended');
   }
 
@@ -613,7 +613,7 @@ export class LexicalNode {
    * */
   updateDOM(
     _prevNode: unknown,
-    _dom: HTMLElement,
+    _dom: null | HTMLElement,
     _config: EditorConfig,
   ): boolean {
     invariant(false, 'updateDOM: base method not extended');

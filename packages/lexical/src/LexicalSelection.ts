@@ -2946,14 +2946,16 @@ export function updateDOMSelection(
     // complex, as now, we've sync update the DOM, but selection no longer
     // matches.
     if (IS_CHROME && nodeCount > 1000) {
-      window.requestAnimationFrame(() =>
-        domSelection.setBaseAndExtent(
-          nextAnchorNode as Node,
-          nextAnchorOffset,
-          nextFocusNode as Node,
-          nextFocusOffset,
-        ),
-      );
+      window.requestAnimationFrame(() => {
+        try {
+          domSelection.setBaseAndExtent(
+            nextAnchorNode as Node,
+            nextAnchorOffset,
+            nextFocusNode as Node,
+            nextFocusOffset,
+          );
+        } catch (error) {}
+      });
     } else {
       domSelection.setBaseAndExtent(
         nextAnchorNode,
