@@ -129,6 +129,7 @@ export class EditorState {
 
     return editorState;
   }
+
   toJSON(): SerializedEditorState {
     return readEditorState(this, () => ({
       root: exportNodeToJSON($getRoot()),

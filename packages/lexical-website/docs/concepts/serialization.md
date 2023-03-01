@@ -21,7 +21,7 @@ const htmlString = $generateHtmlFromNodes(editor, selection | null);
 You can control how a `LexicalNode` is represented as HTML by adding an `exportDOM()` method.
 
 ```js
-exportDOM(editor: LexicalEditor): DOMExportOutput
+exportDOM(editor: LexicalEditor | null): DOMExportOutput
 ```
 
 When transforming an editor state into HTML, we simply traverse the current editor state (or the selected subset thereof) and call the `exportDOM` method for each Node in order to convert it to an `HTMLElement`.

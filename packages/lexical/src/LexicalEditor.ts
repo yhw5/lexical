@@ -11,7 +11,15 @@ import type {DOMConversion, NodeKey} from './LexicalNode';
 
 import invariant from 'shared/invariant';
 
-import {$getRoot, $getSelection, TextNode} from '.';
+import {
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  GridSelection,
+  NodeSelection,
+  RangeSelection,
+  TextNode,
+} from '.';
 import {FULL_RECONCILE, NO_DIRTY_NODES} from './LexicalConstants';
 import {createEmptyEditorState} from './LexicalEditorState';
 import {addRootElementEvents, removeRootElementEvents} from './LexicalEvents';
@@ -934,4 +942,92 @@ export class LexicalEditor {
       editorState: this._editorState.toJSON(),
     };
   }
+
+  toHTML(): string {
+    let output = '';
+    updateEditor(this, () => {
+      output = exportNodeToHTMLFromEditorConfig($getRoot(), this, this._config);
+    });
+    return output;
+  }
+}
+
+function exportNodeToHTMLFromEditorConfig(
+  node: LexicalNode,
+  editor: LexicalEditor,
+  editorConfig: EditorConfig,
+): string {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    throw new Error(
+      'To use editor.toHTML in headless mode please initialize a headless browser implementation such as JSDom before calling this function.',
+    );
+  }
+
+  const container = document.createElement('div');
+  const topLevelChildren = node.getChildren();
+
+  for (let i = 0; i < topLevelChildren.length; i++) {
+    const topLevelNode = topLevelChildren[i];
+    appendNodesToHTML(editor, editorConfig, topLevelNode, container);
+  }
+
+  return container.innerHTML;
+}
+
+function appendNodesToHTML(
+  editor: LexicalEditor,
+  editorConfig: EditorConfig,
+  currentNode: LexicalNode,
+  parentElement: HTMLElement | DocumentFragment,
+  selection: RangeSelection | NodeSelection | GridSelection | null = null,
+): boolean {
+  let shouldInclude = selection != null ? currentNode.isSelected() : true;
+  const shouldExclude =
+    $isElementNode(currentNode) && currentNode.excludeFromCopy('html');
+
+  const children = $isElementNode(currentNode) ? currentNode.getChildren() : [];
+  const {element, after} = currentNode.exportDOM(editor);
+
+  if (!element) {
+    return false;
+  }
+
+  const fragment = new DocumentFragment();
+
+  for (let i = 0; i < children.length; i++) {
+    const childNode = children[i];
+    const shouldIncludeChild = appendNodesToHTML(
+      editor,
+      editorConfig,
+      childNode,
+      fragment,
+      selection,
+    );
+
+    if (
+      !shouldInclude &&
+      $isElementNode(currentNode) &&
+      shouldIncludeChild &&
+      currentNode.extractWithChild(childNode, selection, 'html')
+    ) {
+      shouldInclude = true;
+    }
+  }
+
+  if (shouldInclude && !shouldExclude) {
+    element.append(fragment);
+    parentElement.append(element);
+
+    if (after) {
+      const newElement = after.call(currentNode, element);
+
+      if (newElement) {
+        element.replaceWith(newElement);
+      }
+    }
+  } else {
+    parentElement.append(fragment);
+  }
+
+  return shouldInclude;
 }

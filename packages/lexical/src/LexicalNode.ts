@@ -619,9 +619,12 @@ export class LexicalNode {
     invariant(false, 'updateDOM: base method not extended');
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
-    const element = this.createDOM(editor._config, editor);
-    return {element};
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
+    if (editor) {
+      const element = this.createDOM(editor._config, editor);
+      return {element};
+    }
+    return {element: null};
   }
 
   exportJSON(): SerializedLexicalNode {

@@ -516,7 +516,7 @@ export class TextNode extends LexicalNode {
   // This improves Lexical's basic text output in copy+paste plus
   // for headless mode where people might use Lexical to generate
   // HTML content and not have the ability to use CSS classes.
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     let {element} = super.exportDOM(editor);
 
     // This is the only way to properly add support for most clients,

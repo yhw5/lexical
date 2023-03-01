@@ -89,7 +89,7 @@ export class TableNode extends DEPRECATED_GridNode {
     return false;
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     return {
       ...super.exportDOM(editor),
       after: (tableElement) => {

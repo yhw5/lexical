@@ -114,7 +114,7 @@ export class TableCellNode extends DEPRECATED_GridCellNode {
     return element;
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     const {element} = super.exportDOM(editor);
 
     if (element) {

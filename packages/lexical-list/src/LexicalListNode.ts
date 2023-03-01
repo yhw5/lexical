@@ -136,7 +136,7 @@ export class ListNode extends ElementNode {
     return node;
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     const {element} = super.exportDOM(editor);
     if (element) {
       if (this.__start !== 1) {

@@ -69,7 +69,7 @@ export class ParagraphNode extends ElementNode {
     };
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     const {element} = super.exportDOM(editor);
 
     if (element && this.isEmpty()) {

@@ -107,9 +107,9 @@ export class ExcalidrawNode extends DecoratorNode<JSX.Element> {
     };
   }
 
-  exportDOM(editor: LexicalEditor): DOMExportOutput {
+  exportDOM(editor: LexicalEditor | null): DOMExportOutput {
     const element = document.createElement('span');
-    const content = editor.getElementByKey(this.getKey());
+    const content = editor ? editor.getElementByKey(this.getKey()) : null;
     if (content !== null) {
       const svg = content.querySelector('svg');
       if (svg !== null) {
