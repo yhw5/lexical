@@ -6,16 +6,13 @@
  *
  */
 
-import type {NodeKey} from 'lexical';
-
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
+import {useLexicalNodeSelection} from '@lexical/react/useLexicalNodeSelection';
 import {mergeRegister} from '@lexical/utils';
-import {
-  $getNodeByKey,
-  $getSelection,
-  $isNodeSelection,
+import { $getNodeByKey,
   COMMAND_PRIORITY_HIGH,
   KEY_ESCAPE_COMMAND,
+NodeKey,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical';
 import * as React from 'react';
@@ -40,6 +37,8 @@ export default function EquationComponent({
   const [equationValue, setEquationValue] = useState(equation);
   const [showEquationEditor, setShowEquationEditor] = useState<boolean>(false);
   const inputRef = useRef(null);
+  const rendererRef = useRef<HTMLImageElement | null>(null);
+  const [isSelected] = useLexicalNodeSelection(nodeKey);
 
   const onHide = useCallback(
     (restoreSelection?: boolean) => {
@@ -92,20 +91,6 @@ export default function EquationComponent({
           COMMAND_PRIORITY_HIGH,
         ),
       );
-    } else {
-      return editor.registerUpdateListener(({editorState}) => {
-        const isSelected = editorState.read(() => {
-          const selection = $getSelection();
-          return (
-            $isNodeSelection(selection) &&
-            selection.has(nodeKey) &&
-            selection.getNodes().length === 1
-          );
-        });
-        if (isSelected) {
-          setShowEquationEditor(true);
-        }
-      });
     }
   }, [editor, nodeKey, onHide, showEquationEditor]);
 
@@ -116,15 +101,15 @@ export default function EquationComponent({
           equation={equationValue}
           setEquation={setEquationValue}
           inline={inline}
-          inputRef={inputRef}
+          ref={inputRef}
         />
       ) : (
         <KatexRenderer
           equation={equationValue}
           inline={inline}
-          onClick={() => {
-            setShowEquationEditor(true);
-          }}
+          onDoubleClick={() => setShowEquationEditor(true)}
+          isSelected={isSelected}
+          ref={rendererRef}
         />
       )}
     </>

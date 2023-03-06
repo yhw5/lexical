@@ -498,6 +498,7 @@ function onBeforeInput(event: InputEvent, editor: LexicalEditor): void {
           event.preventDefault();
           dispatchCommand(editor, DELETE_CHARACTER_COMMAND, true);
         }
+
         return;
       }
     }

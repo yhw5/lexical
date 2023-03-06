@@ -8,17 +8,22 @@
 
 import katex from 'katex';
 import * as React from 'react';
-import {useEffect, useRef} from 'react';
+import {forwardRef, useEffect, useRef} from 'react';
 
-export default function KatexRenderer({
-  equation,
-  inline,
-  onClick,
-}: Readonly<{
-  equation: string;
-  inline: boolean;
-  onClick: () => void;
-}>): JSX.Element {
+function KatexRenderer(
+  {
+    equation,
+    inline,
+    isSelected,
+    onDoubleClick,
+  }: Readonly<{
+    equation: string;
+    inline: boolean;
+    isSelected: boolean;
+    onDoubleClick: () => void;
+  }>,
+  forwardedRef: React.Ref<HTMLImageElement>,
+): JSX.Element {
   const katexElementRef = useRef(null);
 
   useEffect(() => {
@@ -37,18 +42,19 @@ export default function KatexRenderer({
   }, [equation, inline]);
 
   return (
-    // We use spacers either side to ensure Android doesn't try and compose from the
-    // inner text from Katex. There didn't seem to be any other way of making this work,
-    // without having a physical space.
+    // We use an empty img to ensure Android doesn't try and compose from the inner text from Katex.
+    // There didn't seem to be any other way of making this work, without having a physical space.
     <>
-      <span className="spacer"> </span>
       <span
+        className={`editor-equation ${isSelected ? 'focused' : ''}`}
         role="button"
         tabIndex={-1}
-        onClick={onClick}
+        onDoubleClick={onDoubleClick}
         ref={katexElementRef}
       />
-      <span className="spacer"> </span>
+      <img alt="" tabIndex={-1} ref={forwardedRef} />
     </>
   );
 }
+
+export default forwardRef(KatexRenderer);
