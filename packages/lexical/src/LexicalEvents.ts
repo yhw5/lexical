@@ -436,11 +436,8 @@ function $canRemoveText(
   );
 }
 
-function isPossiblyAndroidKeyPress(timeStamp: number): boolean {
-  return (
-    lastKeyCode === 229 &&
-    timeStamp < lastKeyDownTimeStamp + ANDROID_COMPOSITION_LATENCY
-  );
+function isPossiblyAndroidKeyPress(): boolean {
+  return lastKeyCode === 229;
 }
 
 function onBeforeInput(event: InputEvent, editor: LexicalEditor): void {
@@ -480,8 +477,7 @@ function onBeforeInput(event: InputEvent, editor: LexicalEditor): void {
       if ($isRangeSelection(selection)) {
         // Used for handling backspace in Android.
         if (
-          isPossiblyAndroidKeyPress(event.timeStamp) &&
-          editor.isComposing() &&
+          isPossiblyAndroidKeyPress() &&
           selection.anchor.key === selection.focus.key
         ) {
           $setCompositionKey(null);
