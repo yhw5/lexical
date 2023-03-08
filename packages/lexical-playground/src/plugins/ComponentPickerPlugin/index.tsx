@@ -140,8 +140,11 @@ export default function ComponentPickerMenuPlugin(): JSX.Element {
           icon: <i className="icon table" />,
           keywords: ['table'],
           onSelect: () =>
-            // @ts-ignore Correct types, but since they're dynamic TS doesn't like it.
-            editor.dispatchCommand(INSERT_TABLE_COMMAND, {columns, rows}),
+            editor.dispatchCommand(INSERT_TABLE_COMMAND, {
+              columns: String(columns),
+              includeHeaders: false,
+              rows: String(rows),
+            }),
         }),
       );
     } else if (partialTableMatch) {
@@ -154,8 +157,11 @@ export default function ComponentPickerMenuPlugin(): JSX.Element {
               icon: <i className="icon table" />,
               keywords: ['table'],
               onSelect: () =>
-                // @ts-ignore Correct types, but since they're dynamic TS doesn't like it.
-                editor.dispatchCommand(INSERT_TABLE_COMMAND, {columns, rows}),
+                editor.dispatchCommand(INSERT_TABLE_COMMAND, {
+                  columns: String(columns),
+                  includeHeaders: false,
+                  rows: String(rows),
+                }),
             }),
         ),
       );

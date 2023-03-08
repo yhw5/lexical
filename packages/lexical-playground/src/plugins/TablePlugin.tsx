@@ -104,6 +104,7 @@ export function InsertTableDialog({
   const onClick = () => {
     activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {
       columns,
+      includeHeaders: false,
       rows,
     });
 
