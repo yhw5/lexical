@@ -38,6 +38,7 @@ export type Binding = {
   id: string;
   nodeProperties: Map<string, Array<string>>;
   root: CollabElementNode;
+  foo: Map<string, string>;
 };
 
 export function createBinding(
@@ -66,6 +67,7 @@ export function createBinding(
     doc,
     docMap,
     editor,
+    foo: new Map(),
     id,
     nodeProperties: new Map(),
     root,

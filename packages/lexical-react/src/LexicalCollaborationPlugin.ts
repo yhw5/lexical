@@ -77,6 +77,24 @@ export function CollaborationPlugin({
     initialEditorState,
   );
 
+  useEffect(() => {
+    let i = 0;
+    const key = Math.random();
+    setInterval(() => {
+      binding.foo.set(String(key), String(i++));
+    }, 1e3);
+  }, []);
+
+  useEffect(() => {
+    provider.awareness.on('update', () => {
+      console.info(
+        'update',
+        [...binding.foo.keys()],
+        [...binding.foo.values()],
+      );
+    });
+  }, []);
+
   collabContext.clientID = binding.clientID;
 
   useYjsHistory(editor, binding);
