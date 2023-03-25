@@ -33,6 +33,7 @@ const packages = {
   '@lexical/text': 'lexical-text',
   '@lexical/utils': 'lexical-utils',
   '@lexical/yjs': 'lexical-yjs',
+  '@lexical/react-native': 'lexical-react-native',
   lexical: 'lexical',
   'lexical-playground': 'lexical-playground',
   shared: 'shared',
