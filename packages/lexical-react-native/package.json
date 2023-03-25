@@ -1,5 +1,5 @@
 {
-  "name": "@lexical/lexical-react-native",
+  "name": "lexical-react-native",
   "description": "This package contains components and infrastructure for running Lexical in React Native.",
   "keywords": [
     "lexical",
@@ -15,11 +15,9 @@
     "react": "*",
     "react-native": "*"
   },
-  "dependencies": {
-  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/facebook/lexical",
+    "url": "git+https://github.com/facebook/lexical.git",
     "directory": "packages/lexical-react-native"
   },
   "react-native": "src/js/index",
@@ -39,5 +37,13 @@
     "name": "LexicalReactNativeSpecs",
     "type": "components",
     "jsSrcsDir": "src/js"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/facebook/lexical/issues"
+  },
+  "homepage": "https://github.com/facebook/lexical#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": ""
 }
