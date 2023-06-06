@@ -283,13 +283,21 @@ function convertAnchorElement(domNode: Node): DOMConversionOutput {
   let node = null;
   if (isHTMLAnchorElement(domNode)) {
     const content = domNode.textContent;
-    if (content !== null && content !== '') {
-      node = $createLinkNode(domNode.getAttribute('href') || '', {
-        rel: domNode.getAttribute('rel'),
-        target: domNode.getAttribute('target'),
-        title: domNode.getAttribute('title'),
-      });
+    const {firstChild} = domNode;
+    // filter out empty links
+    if (
+      domNode.childNodes.length === 1 &&
+      firstChild !== null &&
+      firstChild.nodeType === Node.TEXT_NODE &&
+      (content == null || content === '')
+    ) {
+      return {node};
     }
+    node = $createLinkNode(domNode.getAttribute('href') || '', {
+      rel: domNode.getAttribute('rel'),
+      target: domNode.getAttribute('target'),
+      title: domNode.getAttribute('title'),
+    });
   }
   return {node};
 }
