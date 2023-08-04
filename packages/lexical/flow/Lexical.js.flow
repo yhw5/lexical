@@ -535,6 +535,10 @@ declare class _Point {
   set(key: NodeKey, offset: number, type: 'text' | 'element'): void;
 }
 
+declare export function $isBlockElementNode(
+  node: ?LexicalNode,
+): boolean %checks(node instanceof ElementNode);
+
 declare export function $createRangeSelection(): RangeSelection;
 declare export function $createNodeSelection(): NodeSelection;
 declare export function DEPRECATED_$createGridSelection(): GridSelection;
