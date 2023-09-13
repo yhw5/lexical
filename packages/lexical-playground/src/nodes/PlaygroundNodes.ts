@@ -26,6 +26,7 @@ import {EmojiNode} from './EmojiNode';
 import {EquationNode} from './EquationNode';
 import {ExcalidrawNode} from './ExcalidrawNode';
 import {FigmaNode} from './FigmaNode';
+import {FooNode} from './FooNode';
 import {ImageNode} from './ImageNode';
 import {InlineImageNode} from './InlineImageNode';
 import {KeywordNode} from './KeywordNode';
@@ -75,6 +76,7 @@ const PlaygroundNodes: Array<Klass<LexicalNode>> = [
   PageBreakNode,
   LayoutContainerNode,
   LayoutItemNode,
+  FooNode,
 ];
 
 export default PlaygroundNodes;

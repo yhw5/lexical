@@ -73,6 +73,8 @@ import YouTubePlugin from './plugins/YouTubePlugin';
 import PlaygroundEditorTheme from './themes/PlaygroundEditorTheme';
 import ContentEditable from './ui/ContentEditable';
 import Placeholder from './ui/Placeholder';
+import {FOO_COMMAND, FooPlugin} from './nodes/FooPlugin';
+import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 
 const skipCollaborationInit =
   // @ts-ignore
@@ -80,6 +82,7 @@ const skipCollaborationInit =
 
 export default function Editor(): JSX.Element {
   const {historyState} = useSharedHistoryContext();
+  const [editor] = useLexicalComposerContext();
   const {
     settings: {
       isCollab,
@@ -221,6 +224,7 @@ export default function Editor(): JSX.Element {
             {!isEditable && <LexicalClickableLinkPlugin />}
             <HorizontalRulePlugin />
             <EquationsPlugin />
+            <FooPlugin />
             <ExcalidrawPlugin />
             <TabFocusPlugin />
             <TabIndentationPlugin />
@@ -262,6 +266,12 @@ export default function Editor(): JSX.Element {
         <div>{showTableOfContents && <TableOfContentsPlugin />}</div>
         {shouldUseLexicalContextMenu && <ContextMenuPlugin />}
         <ActionsPlugin isRichText={isRichText} />
+        <button
+          onClick={() => {
+            editor.dispatchCommand(FOO_COMMAND, undefined);
+          }}>
+          insert
+        </button>
       </div>
       {showTreeView && <TreeViewPlugin />}
     </>
