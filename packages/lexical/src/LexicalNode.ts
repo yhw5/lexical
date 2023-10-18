@@ -440,7 +440,7 @@ export class LexicalNode {
   }
 
   /**
-   * Returns the "next" siblings - that is, the node that comes
+   * Returns the "next" sibling - that is, the node that comes
    * after this one in the same parent
    *
    */
