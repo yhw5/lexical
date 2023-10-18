@@ -407,7 +407,7 @@ export class LexicalNode {
   }
 
   /**
-   * Returns the "previous" siblings - that is, the node that comes
+   * Returns the "previous" sibling - that is, the node that comes
    * before this one in the same parent.
    *
    */
