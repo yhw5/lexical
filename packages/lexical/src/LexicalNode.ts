@@ -377,7 +377,7 @@ export class LexicalNode {
   }
 
   /**
-   * Returns a list of the every ancestor of this node,
+   * Returns a list of every ancestor of this node,
    * all the way up to the RootNode.
    *
    */
