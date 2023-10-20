@@ -512,6 +512,7 @@ export class LexicalNode {
 
   /**
    * Returns true if this node logical precedes the target node in the editor state.
+   * Using a preorder traversal of the tree this node comes before target node.
    *
    * @param targetNode - the node we're testing to see if it's after this one.
    */
