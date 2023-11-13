@@ -8,10 +8,17 @@
 
 import type {LexicalEditor, LexicalNode} from 'lexical';
 
+import {$isListItemNode, ListItemNode} from '@lexical/list';
 import {createDOMRange} from '@lexical/selection';
 import {$rootTextContent} from '@lexical/text';
 import {mergeRegister, positionNodeOnRange} from '@lexical/utils';
-import {$getRoot, $isElementNode} from 'lexical';
+import {
+  $getRoot,
+  $isElementNode,
+  $isParagraphNode,
+  $isTextNode,
+  ParagraphNode,
+} from 'lexical';
 import * as React from 'react';
 import {useEffect, useState} from 'react';
 import invariant from 'shared/invariant';
@@ -71,7 +78,33 @@ export function CharacterLimitPlugin({
   );
 }
 
-let x = 0;
+let infiniteLoop = 0;
+function throwsOnInfiniteLoop(ref: string) {
+  invariant(
+    --infiniteLoop >= 0,
+    'CharacterLimit aborted, potential infinite loop. %s',
+    String(ref),
+  );
+}
+
+// // rules.textBefore(paragraph: )
+// const BLOCK_RULES = {
+//   'paragraph': () => {
+//     return {
+//       textAfter: paragraph.getNextSibling() !==null ? '\n\n' : ''
+//     }
+//   }
+// }
+
+function listItemTextBeforeRule(listItem: ListItemNode): string {
+  return listItem.getParentOrThrow().getType() === 'bullet'
+    ? `${listItem.getValue()}.`
+    : '';
+}
+
+function paragraphTextAfterRule(paragraph: ParagraphNode): string {
+  return paragraph.getNextSibling() !== null ? '\n\n' : '';
+}
 
 function useOverlay(maxLength: number, strlen: StrlenFn): void {
   const [editor] = useLexicalComposerContext();
@@ -81,77 +114,99 @@ function useOverlay(maxLength: number, strlen: StrlenFn): void {
       editor.registerTextContentListener(() => {
         removePositionNodeOnRange();
         editor.getEditorState().read(() => {
-          const overflowLength_ = $overflowLength(maxLength, strlen);
-          if (overflowLength_ <= 0) {
-            console.info('no overflow');
-            return;
-          }
-          const levelAccLength = [0];
-          let level = 0;
-          let node: LexicalNode = $getRoot();
-          let pivot: null | LexicalNode = null;
-          loop: while (node !== null) {
-            // if (x++ > 100) {
-            debugger;
-            // }
-            const nodeLength = strlen(node.getTextContent());
-            if (levelAccLength[level] + nodeLength < overflowLength_) {
-              // Tree iterate left and up
-              levelAccLength[level] += nodeLength;
-              const previousSibling: null | LexicalNode =
-                node.getPreviousSibling();
-              if (previousSibling !== null) {
-                if (
-                  $isElementNode(previousSibling) &&
-                  !previousSibling.isInline()
-                ) {
-                  // TODO revise this hardcoded \n\n condition. This works well for 99% of the cases
-                  // but it might make sense to switch to a MS/GDoc model where only inline characters
-                  // are taken into account.
-                  levelAccLength[level] += 2; // \n\n
+          // Up to O(2n) on a single branch tree
+          infiniteLoop = editor.getEditorState()._nodeMap.size * 2;
+          let overflowStartNode: null | LexicalNode = $getRoot();
+          let overflowStartOffset = 0;
+          let characterCount = 0;
+          loop: while (overflowStartNode !== null) {
+            // Traverse to first descendant
+            while (
+              $isElementNode(overflowStartNode) &&
+              !overflowStartNode.isEmpty()
+            ) {
+              throwsOnInfiniteLoop('1');
+              // TODO replace with rule
+              if ($isListItemNode(overflowStartNode)) {
+                characterCount += strlen(
+                  listItemTextBeforeRule(overflowStartNode),
+                );
+                if (characterCount > maxLength) {
+                  break loop;
                 }
-                node = previousSibling;
-              } else {
-                level--;
-                node = node.getParentOrThrow();
               }
-            } else {
-              // Tree iterate down and right-most
-              if (!$isElementNode(node)) {
-                pivot = node;
+              overflowStartNode = overflowStartNode.getFirstChildOrThrow();
+            }
+
+            // Process Node
+            if (!$isElementNode(overflowStartNode)) {
+              characterCount += strlen(overflowStartNode.getTextContent());
+              if (characterCount > maxLength) {
                 break loop;
               }
-              level++;
-              if (levelAccLength[level] === undefined) {
-                levelAccLength[level] = 0;
+            }
+
+            // Traverse to next (& up)
+            while (overflowStartNode !== null) {
+              throwsOnInfiniteLoop('2');
+              // TODO replace with rule
+              if ($isParagraphNode(overflowStartNode)) {
+                characterCount += strlen(
+                  paragraphTextAfterRule(overflowStartNode),
+                );
+                if (characterCount > maxLength) {
+                  overflowStartOffset = overflowStartNode.getTextContentSize();
+                  break loop;
+                }
               }
-              const lastChild: null | LexicalNode = node.getLastChild();
-              // Can happen when custom getTextContent on ElementNode
-              if (lastChild === null) {
-                pivot = node;
-                break loop;
+              const sibling: null | LexicalNode =
+                overflowStartNode.getNextSibling();
+              if (sibling !== null) {
+                overflowStartNode = sibling;
+                break;
               }
-              node = lastChild;
+              overflowStartNode = overflowStartNode.getParent();
             }
           }
-          invariant(pivot !== null, 'CharacterLimit was unable to find pivot');
-          // pivot could be elementnode in custom ocassions, null when not oveflow
-          // beware offset can be affected by \n\n
-          const offset =
-            strlen(pivot.getTextContent()) -
-            (overflowLength_ - levelAccLength[level]);
-          const lastEditorNode = $getRoot().getLastDescendant();
+
+          if (overflowStartNode === null) {
+            removePositionNodeOnRange = () => {};
+            return;
+          }
+
+          // Find offset in TextNode
+          if ($isTextNode(overflowStartNode)) {
+            const nodeCapacity =
+              strlen(overflowStartNode.getTextContent()) -
+              (characterCount - maxLength);
+            let left = 0;
+            let right = overflowStartNode.getTextContentSize() - 1;
+            while (left <= right) {
+              const mid = Math.floor((right - left) / 2) + left;
+              const overflows =
+                strlen(overflowStartNode.getTextContent().slice(0, mid + 1)) >
+                nodeCapacity;
+              if (overflows) {
+                right = mid - 1;
+              } else {
+                left = mid + 1;
+              }
+            }
+            overflowStartOffset = left;
+          }
+
+          const overflowEndNode = $getRoot().getLastDescendant();
           invariant(
-            lastEditorNode !== null,
+            overflowEndNode !== null,
             'Unexpected null last editor node',
           );
           // revise offset for strlen
           const range = createDOMRange(
             editor,
-            pivot,
-            offset,
-            lastEditorNode,
-            lastEditorNode.getTextContentSize(),
+            overflowStartNode,
+            overflowStartOffset,
+            overflowEndNode,
+            overflowEndNode.getTextContentSize(),
           );
           if (range !== null) {
             removePositionNodeOnRange = positionNodeOnRange(
@@ -168,9 +223,10 @@ function useOverlay(maxLength: number, strlen: StrlenFn): void {
       }),
       removePositionNodeOnRange,
     );
-  }, [editor, maxLength, strlen]);
+  });
 }
 
+// TODO needs to be rewritten
 function OverflowCount({
   strlen,
   children,
