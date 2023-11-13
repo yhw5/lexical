@@ -6,13 +6,13 @@
  *
  */
 
-import type {LexicalEditor, LexicalNode} from 'lexical';
+import type {LexicalEditor, LexicalNode, NodeKey} from 'lexical';
 
 import {$isListItemNode, ListItemNode} from '@lexical/list';
 import {createDOMRange} from '@lexical/selection';
-import {$rootTextContent} from '@lexical/text';
 import {mergeRegister, positionNodeOnRange} from '@lexical/utils';
 import {
+  $getNodeByKey,
   $getRoot,
   $isElementNode,
   $isParagraphNode,
@@ -20,7 +20,7 @@ import {
   ParagraphNode,
 } from 'lexical';
 import * as React from 'react';
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import invariant from 'shared/invariant';
 
 import {useLexicalComposerContext} from './LexicalComposerContext';
@@ -66,13 +66,15 @@ export function CharacterLimitPlugin({
   strlen?: StrlenFn;
   children?: (overflowed: number) => JSX.Element;
 }): null | JSX.Element {
+  const [editor] = useLexicalComposerContext();
+  const [, rootSize] = useTextContentSizeCache(editor, strlen);
   useOverlay(maxLength, strlen);
 
   if (children === undefined) {
     return null;
   }
   return (
-    <OverflowCount strlen={strlen} maxLength={maxLength}>
+    <OverflowCount rootSize={rootSize} maxLength={maxLength}>
       {children}
     </OverflowCount>
   );
@@ -221,36 +223,80 @@ function useOverlay(maxLength: number, strlen: StrlenFn): void {
   }, [editor, maxLength, strlen]);
 }
 
-// TODO needs to be rewritten
-function OverflowCount({
-  strlen,
-  children,
-  maxLength,
-}: {
-  maxLength: number;
-  strlen: StrlenFn;
-  children: (overflowed: number) => JSX.Element;
-}): JSX.Element {
-  const [editor] = useLexicalComposerContext();
-  const [overflow, setOverflow] = useState(
-    () => -overflowLength(editor, maxLength, strlen),
-  );
-  useEffect(() => {
-    return editor.registerTextContentListener((text) => {
-      setOverflow(-overflowLength(editor, maxLength, strlen));
-    });
-  }, [editor, maxLength, strlen]);
-  return children(overflow);
-}
+type TextContentSizeCache = Map<NodeKey, number>;
 
-function overflowLength(
+function useTextContentSizeCache(
   editor: LexicalEditor,
-  maxLength: number,
   strlen: StrlenFn,
-): number {
-  return editor.getEditorState().read(() => $overflowLength(maxLength, strlen));
+): [TextContentSizeCache, number] {
+  const cache = useMemo(() => new Map<NodeKey, number>(), []);
+  const [rootSize, setRootSize] = useState(0);
+  useEffect(() => {
+    const removeUpdateListener = editor.registerUpdateListener(
+      ({editorState, dirtyElements, dirtyLeaves}) => {
+        const newRootSize = editorState.read(() => {
+          if (dirtyElements.size === 0 && dirtyLeaves.size === 0) {
+            return cache.get('root') || 0;
+          }
+          function $removeKey(nodeKey: NodeKey) {
+            let node = $getNodeByKey(nodeKey);
+            while (node !== null) {
+              cache.delete(nodeKey);
+              node = node.getParent();
+            }
+          }
+          // Invalidate parent cache (mimic markNodeAsDirty)
+          for (const [nodeKey] of dirtyElements) {
+            $removeKey(nodeKey);
+          }
+          for (const nodeKey of dirtyLeaves) {
+            $removeKey(nodeKey);
+          }
+
+          // Traverse the tree to refill missing cache (mimic reconciler)
+          function makeCache(node: LexicalNode): number {
+            const key = node.getKey();
+            let size = cache.get(key);
+            if (size === undefined) {
+              size = 0;
+              // TODO replace with rule before
+              if ($isListItemNode(node)) {
+                size += strlen(listItemTextBeforeRule(node));
+              }
+              if ($isElementNode(node)) {
+                const children = node.getChildren();
+                for (const child of children) {
+                  size += makeCache(child);
+                }
+              } else {
+                size += strlen(node.getTextContent());
+              }
+              // TODO replace with rule after
+              if ($isParagraphNode(node)) {
+                size += strlen(paragraphTextAfterRule(node));
+              }
+            }
+            return size;
+          }
+          return makeCache($getRoot());
+        });
+        setRootSize(newRootSize);
+      },
+    );
+    return mergeRegister(removeUpdateListener, () => cache.clear());
+  }, [cache, editor, strlen]);
+  return [cache, rootSize];
 }
 
-function $overflowLength(maxLength: number, strlen: StrlenFn): number {
-  return strlen($rootTextContent()) - maxLength;
+function OverflowCount({
+  rootSize,
+  maxLength,
+  children,
+}: {
+  rootSize: number;
+  maxLength: number;
+  children: (overflow: number) => JSX.Element;
+}) {
+  const overflow = maxLength - rootSize;
+  return children(overflow);
 }
