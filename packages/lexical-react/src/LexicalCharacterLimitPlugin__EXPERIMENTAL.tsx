@@ -110,120 +110,115 @@ function useOverlay(maxLength: number, strlen: StrlenFn): void {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     let removePositionNodeOnRange = () => {};
-    return mergeRegister(
-      editor.registerTextContentListener(() => {
-        removePositionNodeOnRange();
-        editor.getEditorState().read(() => {
-          // Up to O(2n) on a single branch tree
-          infiniteLoop = editor.getEditorState()._nodeMap.size * 2;
-          let overflowStartNode: null | LexicalNode = $getRoot();
-          let overflowStartOffset = 0;
-          let characterCount = 0;
-          loop: while (overflowStartNode !== null) {
-            // Traverse to first descendant
-            while (
-              $isElementNode(overflowStartNode) &&
-              !overflowStartNode.isEmpty()
-            ) {
-              throwsOnInfiniteLoop('1');
-              // TODO replace with rule
-              if ($isListItemNode(overflowStartNode)) {
-                characterCount += strlen(
-                  listItemTextBeforeRule(overflowStartNode),
-                );
-                if (characterCount > maxLength) {
-                  break loop;
-                }
-              }
-              overflowStartNode = overflowStartNode.getFirstChildOrThrow();
-            }
-
-            // Process Node
-            if (!$isElementNode(overflowStartNode)) {
-              characterCount += strlen(overflowStartNode.getTextContent());
+    const removeTextContentListener = editor.registerTextContentListener(() => {
+      removePositionNodeOnRange();
+      editor.getEditorState().read(() => {
+        // Up to O(2n) on a single branch tree
+        infiniteLoop = editor.getEditorState()._nodeMap.size * 2;
+        let overflowStartNode: null | LexicalNode = $getRoot();
+        let overflowStartOffset = 0;
+        let characterCount = 0;
+        loop: while (overflowStartNode !== null) {
+          // Traverse to first descendant
+          while (
+            $isElementNode(overflowStartNode) &&
+            !overflowStartNode.isEmpty()
+          ) {
+            throwsOnInfiniteLoop('1');
+            // TODO replace with rule
+            if ($isListItemNode(overflowStartNode)) {
+              characterCount += strlen(
+                listItemTextBeforeRule(overflowStartNode),
+              );
               if (characterCount > maxLength) {
                 break loop;
               }
             }
+            overflowStartNode = overflowStartNode.getFirstChildOrThrow();
+          }
 
-            // Traverse to next (& up)
-            while (overflowStartNode !== null) {
-              throwsOnInfiniteLoop('2');
-              // TODO replace with rule
-              if ($isParagraphNode(overflowStartNode)) {
-                characterCount += strlen(
-                  paragraphTextAfterRule(overflowStartNode),
-                );
-                if (characterCount > maxLength) {
-                  overflowStartOffset = overflowStartNode.getTextContentSize();
-                  break loop;
-                }
-              }
-              const sibling: null | LexicalNode =
-                overflowStartNode.getNextSibling();
-              if (sibling !== null) {
-                overflowStartNode = sibling;
-                break;
-              }
-              overflowStartNode = overflowStartNode.getParent();
+          // Process Node
+          if (!$isElementNode(overflowStartNode)) {
+            characterCount += strlen(overflowStartNode.getTextContent());
+            if (characterCount > maxLength) {
+              break loop;
             }
           }
 
-          if (overflowStartNode === null) {
-            removePositionNodeOnRange = () => {};
-            return;
-          }
-
-          // Find offset in TextNode
-          if ($isTextNode(overflowStartNode)) {
-            const nodeCapacity =
-              strlen(overflowStartNode.getTextContent()) -
-              (characterCount - maxLength);
-            let left = 0;
-            let right = overflowStartNode.getTextContentSize() - 1;
-            while (left <= right) {
-              const mid = Math.floor((right - left) / 2) + left;
-              const overflows =
-                strlen(overflowStartNode.getTextContent().slice(0, mid + 1)) >
-                nodeCapacity;
-              if (overflows) {
-                right = mid - 1;
-              } else {
-                left = mid + 1;
+          // Traverse to next (& up)
+          while (overflowStartNode !== null) {
+            throwsOnInfiniteLoop('2');
+            // TODO replace with rule
+            if ($isParagraphNode(overflowStartNode)) {
+              characterCount += strlen(
+                paragraphTextAfterRule(overflowStartNode),
+              );
+              if (characterCount > maxLength) {
+                overflowStartOffset = overflowStartNode.getTextContentSize();
+                break loop;
               }
             }
-            overflowStartOffset = left;
+            const sibling: null | LexicalNode =
+              overflowStartNode.getNextSibling();
+            if (sibling !== null) {
+              overflowStartNode = sibling;
+              break;
+            }
+            overflowStartNode = overflowStartNode.getParent();
           }
+        }
 
-          const overflowEndNode = $getRoot().getLastDescendant();
-          invariant(
-            overflowEndNode !== null,
-            'Unexpected null last editor node',
-          );
-          // revise offset for strlen
-          const range = createDOMRange(
+        if (overflowStartNode === null) {
+          removePositionNodeOnRange = () => {};
+          return;
+        }
+
+        // Find offset in TextNode
+        if ($isTextNode(overflowStartNode)) {
+          const nodeCapacity =
+            strlen(overflowStartNode.getTextContent()) -
+            (characterCount - maxLength);
+          let left = 0;
+          let right = overflowStartNode.getTextContentSize() - 1;
+          while (left <= right) {
+            const mid = Math.floor((right - left) / 2) + left;
+            const overflows =
+              strlen(overflowStartNode.getTextContent().slice(0, mid + 1)) >
+              nodeCapacity;
+            if (overflows) {
+              right = mid - 1;
+            } else {
+              left = mid + 1;
+            }
+          }
+          overflowStartOffset = left;
+        }
+
+        const overflowEndNode = $getRoot().getLastDescendant();
+        invariant(overflowEndNode !== null, 'Unexpected null last editor node');
+        // revise offset for strlen
+        const range = createDOMRange(
+          editor,
+          overflowStartNode,
+          overflowStartOffset,
+          overflowEndNode,
+          overflowEndNode.getTextContentSize(),
+        );
+        if (range !== null) {
+          removePositionNodeOnRange = positionNodeOnRange(
             editor,
-            overflowStartNode,
-            overflowStartOffset,
-            overflowEndNode,
-            overflowEndNode.getTextContentSize(),
+            range,
+            (domNodes) => {
+              for (const domNode of domNodes) {
+                domNode.style.backgroundColor = 'red';
+              }
+            },
           );
-          if (range !== null) {
-            removePositionNodeOnRange = positionNodeOnRange(
-              editor,
-              range,
-              (domNodes) => {
-                for (const domNode of domNodes) {
-                  domNode.style.backgroundColor = 'red';
-                }
-              },
-            );
-          }
-        });
-      }),
-      removePositionNodeOnRange,
-    );
-  });
+        }
+      });
+    });
+    return mergeRegister(removeTextContentListener, removePositionNodeOnRange);
+  }, [editor, maxLength, strlen]);
 }
 
 // TODO needs to be rewritten
