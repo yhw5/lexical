@@ -6,7 +6,13 @@
  *
  */
 
-import type {LexicalEditor, LexicalNode, NodeKey} from 'lexical';
+import type {
+  Klass,
+  LexicalEditor,
+  LexicalNode,
+  LexicalNodeReplacement,
+  NodeKey,
+} from 'lexical';
 
 import {$isListItemNode, ListItemNode} from '@lexical/list';
 import {createDOMRange} from '@lexical/selection';
@@ -67,8 +73,8 @@ export function CharacterLimitPlugin({
   children?: (overflowed: number) => JSX.Element;
 }): null | JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const [, rootSize] = useTextContentSizeCache(editor, strlen);
-  useOverlay(maxLength, strlen);
+  const [cache, rootSize] = useTextContentSizeCache(editor, strlen);
+  useOverlay(cache, maxLength, strlen);
 
   if (children === undefined) {
     return null;
@@ -108,119 +114,154 @@ function paragraphTextAfterRule(paragraph: ParagraphNode): string {
   return paragraph.getNextSibling() !== null ? '\n\n' : '';
 }
 
-function useOverlay(maxLength: number, strlen: StrlenFn): void {
+function useOverlay(
+  cache: TextContentSizeCache,
+  maxLength: number,
+  strlen: StrlenFn,
+): void {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     let removePositionNodeOnRange = () => {};
-    const removeTextContentListener = editor.registerTextContentListener(() => {
-      removePositionNodeOnRange();
-      editor.getEditorState().read(() => {
-        // Up to O(2n) on a single branch tree
-        infiniteLoop = editor.getEditorState()._nodeMap.size * 2;
-        let overflowStartNode: null | LexicalNode = $getRoot();
-        let overflowStartOffset = 0;
-        let characterCount = 0;
-        loop: while (overflowStartNode !== null) {
-          // Traverse to first descendant
-          while (
-            $isElementNode(overflowStartNode) &&
-            !overflowStartNode.isEmpty()
-          ) {
-            throwsOnInfiniteLoop('1');
-            // TODO replace with rule
-            if ($isListItemNode(overflowStartNode)) {
-              characterCount += strlen(
-                listItemTextBeforeRule(overflowStartNode),
-              );
-              if (characterCount > maxLength) {
-                break loop;
-              }
-            }
-            overflowStartNode = overflowStartNode.getFirstChildOrThrow();
-          }
-
-          // Process Node
-          if (!$isElementNode(overflowStartNode)) {
-            characterCount += strlen(overflowStartNode.getTextContent());
-            if (characterCount > maxLength) {
-              break loop;
-            }
-          }
-
-          // Traverse to next (& up)
-          while (overflowStartNode !== null) {
-            throwsOnInfiniteLoop('2');
-            // TODO replace with rule
-            if ($isParagraphNode(overflowStartNode)) {
-              characterCount += strlen(
-                paragraphTextAfterRule(overflowStartNode),
-              );
-              if (characterCount > maxLength) {
-                overflowStartOffset = overflowStartNode.getTextContentSize();
-                break loop;
-              }
-            }
-            const sibling: null | LexicalNode =
-              overflowStartNode.getNextSibling();
-            if (sibling !== null) {
-              overflowStartNode = sibling;
-              break;
-            }
-            overflowStartNode = overflowStartNode.getParent();
-          }
-        }
-
-        if (overflowStartNode === null) {
-          removePositionNodeOnRange = () => {};
+    const removeTextContentListener = editor.registerUpdateListener(
+      ({editorState, dirtyElements, dirtyLeaves}) => {
+        if (dirtyElements.size === 0 && dirtyLeaves.size === 0) {
           return;
         }
+        removePositionNodeOnRange();
+        editorState.read(() => {
+          // Up to O(2n) on a single branch tree with empty cache
+          infiniteLoop = editor.getEditorState()._nodeMap.size * 2;
+          let overflowStartNode: null | LexicalNode = $getRoot();
+          let overflowStartOffset = 0;
+          let characterCount = 0;
+          function cacheOverflows(): null | boolean {
+            let cached: undefined | number;
+            if (
+              overflowStartNode === null ||
+              (cached = cache.get(overflowStartNode.getKey())) === undefined
+            ) {
+              return null;
+            }
+            return characterCount + cached > maxLength;
+          }
+          loop: while (overflowStartNode !== null) {
+            // Traverse to first descendant
+            while (
+              $isElementNode(overflowStartNode) &&
+              !overflowStartNode.isEmpty() &&
+              cacheOverflows() !== false
+            ) {
+              throwsOnInfiniteLoop('1');
+              // TODO replace with rule
+              if ($isListItemNode(overflowStartNode)) {
+                characterCount += strlen(
+                  listItemTextBeforeRule(overflowStartNode),
+                );
+                if (characterCount > maxLength) {
+                  break loop;
+                }
+              }
+              overflowStartNode = overflowStartNode.getFirstChildOrThrow();
+            }
 
-        // Find offset in TextNode
-        if ($isTextNode(overflowStartNode)) {
-          const nodeCapacity =
-            strlen(overflowStartNode.getTextContent()) -
-            (characterCount - maxLength);
-          let left = 0;
-          let right = overflowStartNode.getTextContentSize() - 1;
-          while (left <= right) {
-            const mid = Math.floor((right - left) / 2) + left;
-            const overflows =
-              strlen(overflowStartNode.getTextContent().slice(0, mid + 1)) >
-              nodeCapacity;
-            if (overflows) {
-              right = mid - 1;
-            } else {
-              left = mid + 1;
+            // Process Node
+            let cacheCounted = null;
+            if (cacheOverflows() === false) {
+              const cached = cache.get(overflowStartNode.getKey());
+              invariant(
+                cached !== undefined,
+                'Expected to find cache after cacheOverflows() call',
+              );
+              characterCount += cached;
+              cacheCounted = overflowStartNode;
+            } else if (!$isElementNode(overflowStartNode)) {
+              characterCount += strlen(overflowStartNode.getTextContent());
+              if (characterCount > maxLength) {
+                break loop;
+              }
+            }
+
+            // Traverse to next (& up)
+            while (overflowStartNode !== null) {
+              throwsOnInfiniteLoop('2');
+              // TODO replace with rule
+              if (
+                cacheCounted !== overflowStartNode &&
+                $isParagraphNode(overflowStartNode)
+              ) {
+                characterCount += strlen(
+                  paragraphTextAfterRule(overflowStartNode),
+                );
+                if (characterCount > maxLength) {
+                  overflowStartOffset = overflowStartNode.getTextContentSize();
+                  break loop;
+                }
+              }
+              const sibling: null | LexicalNode =
+                overflowStartNode.getNextSibling();
+              if (sibling !== null) {
+                overflowStartNode = sibling;
+                break;
+              }
+              overflowStartNode = overflowStartNode.getParent();
             }
           }
-          overflowStartOffset = left;
-        }
 
-        const overflowEndNode = $getRoot().getLastDescendant();
-        invariant(overflowEndNode !== null, 'Unexpected null last editor node');
-        // revise offset for strlen
-        const range = createDOMRange(
-          editor,
-          overflowStartNode,
-          overflowStartOffset,
-          overflowEndNode,
-          overflowEndNode.getTextContentSize(),
-        );
-        if (range !== null) {
-          removePositionNodeOnRange = positionNodeOnRange(
-            editor,
-            range,
-            (domNodes) => {
-              for (const domNode of domNodes) {
-                domNode.style.backgroundColor = 'red';
+          if (overflowStartNode === null) {
+            removePositionNodeOnRange = () => {};
+            return;
+          }
+
+          // Find offset in TextNode
+          if ($isTextNode(overflowStartNode)) {
+            const nodeCapacity =
+              strlen(overflowStartNode.getTextContent()) -
+              (characterCount - maxLength);
+            let left = 0;
+            let right = overflowStartNode.getTextContentSize() - 1;
+            while (left <= right) {
+              const mid = Math.floor((right - left) / 2) + left;
+              const overflows =
+                strlen(overflowStartNode.getTextContent().slice(0, mid + 1)) >
+                nodeCapacity;
+              if (overflows) {
+                right = mid - 1;
+              } else {
+                left = mid + 1;
               }
-            },
+            }
+            overflowStartOffset = left;
+          }
+
+          const overflowEndNode = $getRoot().getLastDescendant();
+          invariant(
+            overflowEndNode !== null,
+            'Unexpected null last editor node',
           );
-        }
-      });
-    });
+          // revise offset for strlen
+          const range = createDOMRange(
+            editor,
+            overflowStartNode,
+            overflowStartOffset,
+            overflowEndNode,
+            overflowEndNode.getTextContentSize(),
+          );
+          if (range !== null) {
+            removePositionNodeOnRange = positionNodeOnRange(
+              editor,
+              range,
+              (domNodes) => {
+                for (const domNode of domNodes) {
+                  domNode.style.backgroundColor = 'red';
+                }
+              },
+            );
+          }
+        });
+      },
+    );
     return mergeRegister(removeTextContentListener, removePositionNodeOnRange);
-  }, [editor, maxLength, strlen]);
+  }, [cache, editor, maxLength, strlen]);
 }
 
 type TextContentSizeCache = Map<NodeKey, number>;
@@ -232,18 +273,19 @@ function useTextContentSizeCache(
   const cache = useMemo(() => new Map<NodeKey, number>(), []);
   const [rootSize, setRootSize] = useState(0);
   useEffect(() => {
+    function $removeKey(nodeKey: NodeKey) {
+      cache.delete(nodeKey);
+      let node = $getNodeByKey(nodeKey);
+      while (node !== null) {
+        cache.delete(node.getKey());
+        node = node.getParent();
+      }
+    }
     const removeUpdateListener = editor.registerUpdateListener(
       ({editorState, dirtyElements, dirtyLeaves}) => {
         const newRootSize = editorState.read(() => {
           if (dirtyElements.size === 0 && dirtyLeaves.size === 0) {
             return cache.get('root') || 0;
-          }
-          function $removeKey(nodeKey: NodeKey) {
-            let node = $getNodeByKey(nodeKey);
-            while (node !== null) {
-              cache.delete(nodeKey);
-              node = node.getParent();
-            }
           }
           // Invalidate parent cache (mimic markNodeAsDirty)
           for (const [nodeKey] of dirtyElements) {
@@ -275,6 +317,7 @@ function useTextContentSizeCache(
               if ($isParagraphNode(node)) {
                 size += strlen(paragraphTextAfterRule(node));
               }
+              cache.set(key, size);
             }
             return size;
           }
@@ -286,6 +329,15 @@ function useTextContentSizeCache(
     return mergeRegister(removeUpdateListener, () => cache.clear());
   }, [cache, editor, strlen]);
   return [cache, rootSize];
+}
+
+export function lexicalNodes(editor: LexicalEditor): Array<Klass<LexicalNode>> {
+  const editorNodes = editor._nodes;
+  const nodes: Array<Klass<LexicalNode> | LexicalNodeReplacement> = [];
+  for (const [, registeredNode] of editorNodes) {
+    nodes.push(registeredNode.klass);
+  }
+  return nodes;
 }
 
 function OverflowCount({

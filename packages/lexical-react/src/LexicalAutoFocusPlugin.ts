@@ -35,6 +35,9 @@ export function AutoFocusPlugin({defaultSelection}: Props): null {
       },
       {defaultSelection},
     );
+    return editor.registerTextContentListener((text) => {
+      // console.info(text, text.length);
+    });
   }, [defaultSelection, editor]);
 
   return null;
