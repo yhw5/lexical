@@ -247,6 +247,7 @@ function useOverlay(
               (domNodes) => {
                 for (const domNode of domNodes) {
                   domNode.style.backgroundColor = 'red';
+                  domNode.style.opacity = '0.5';
                 }
               },
             );

@@ -8,7 +8,6 @@
 
 import type {LexicalEditor} from 'lexical';
 
-import {createRectsFromDOMRange} from '@lexical/selection';
 import invariant from 'shared/invariant';
 
 import px from './px';
@@ -138,4 +137,62 @@ export default function positionNodeOnRange(
     removeRootListener();
     stop();
   };
+}
+
+export function createRectsFromDOMRange(
+  editor: LexicalEditor,
+  range: Range,
+): Array<DOMRect> {
+  const rects = Array.from(range.getClientRects());
+  if (rects.length === 0) {
+    return [];
+  }
+
+  rects.sort((a, b) => a.x - b.x);
+
+  const nonOverlappingRects = [rects[0]];
+
+  for (let i = 1; i < rects.length; i++) {
+    const currentRect = rects[i];
+    let isOverlapping = false;
+
+    // Check for overlap with existing non-overlapping rectangles
+    for (
+      let j = nonOverlappingRects.length - 1;
+      // Accuracy vs performance, we can potentially constrain it to exploring the last one
+      j >= 0;
+      j--
+    ) {
+      const existingRect = nonOverlappingRects[j];
+      if (rectsOverlap(currentRect, existingRect)) {
+        isOverlapping = true;
+
+        const left = Math.min(currentRect.left, existingRect.left);
+        const top = Math.min(currentRect.top, existingRect.top);
+        const right = Math.max(currentRect.right, existingRect.right);
+        const bottom = Math.max(currentRect.bottom, existingRect.bottom);
+        const width = right - left;
+        const height = bottom - top;
+        nonOverlappingRects[j] = new DOMRect(left, top, width, height);
+
+        break;
+      }
+    }
+
+    // If not overlapping, add to the non-overlapping array
+    if (!isOverlapping) {
+      nonOverlappingRects.push(currentRect);
+    }
+  }
+
+  return nonOverlappingRects;
+}
+
+function rectsOverlap(a: ClientRect, b: ClientRect) {
+  return (
+    a.left <= b.right &&
+    a.right >= b.left &&
+    a.bottom >= b.top &&
+    a.top <= b.bottom
+  );
 }
