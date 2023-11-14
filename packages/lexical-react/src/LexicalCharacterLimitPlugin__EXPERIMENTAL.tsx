@@ -6,13 +6,7 @@
  *
  */
 
-import type {
-  Klass,
-  LexicalEditor,
-  LexicalNode,
-  LexicalNodeReplacement,
-  NodeKey,
-} from 'lexical';
+import type {LexicalEditor, LexicalNode, NodeKey} from 'lexical';
 
 import {$isListItemNode, ListItemNode} from '@lexical/list';
 import {createDOMRange} from '@lexical/selection';
@@ -329,15 +323,6 @@ function useTextContentSizeCache(
     return mergeRegister(removeUpdateListener, () => cache.clear());
   }, [cache, editor, strlen]);
   return [cache, rootSize];
-}
-
-export function lexicalNodes(editor: LexicalEditor): Array<Klass<LexicalNode>> {
-  const editorNodes = editor._nodes;
-  const nodes: Array<Klass<LexicalNode> | LexicalNodeReplacement> = [];
-  for (const [, registeredNode] of editorNodes) {
-    nodes.push(registeredNode.klass);
-  }
-  return nodes;
 }
 
 function OverflowCount({
