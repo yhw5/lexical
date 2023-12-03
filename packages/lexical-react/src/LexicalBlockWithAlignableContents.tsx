@@ -141,6 +141,16 @@ export function BlockWithAlignableContents({
         textAlign: format ? format : undefined,
       }}>
       {children}
+      {/* TODO (me): Figure out why he did the below */}
+      <span
+        contentEditable={true}
+        onFocus={(e) => {
+          e.target.blur();
+          editor.getRootElement(); //?.focus();
+          clearSelection();
+          setSelected(true);
+        }}
+      />
     </div>
   );
 }
